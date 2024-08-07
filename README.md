@@ -4,4 +4,12 @@
 
 ### It is a private repository 
 
-### 
+### To install,
+
+```
+python setup.py sdist bdist_wheel
+```
+```
+ pip install .
+```
+  

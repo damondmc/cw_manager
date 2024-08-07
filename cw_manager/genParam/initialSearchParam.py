@@ -1,6 +1,6 @@
 #Author - Damon Cheung
-import ..utils.utils as utils
-import .frequencyRange as fr
+from ..utils import utils as utils
+from . import frequencyRange as fr
 from tqdm import tqdm
 import numpy as np
 from astropy.io import fits

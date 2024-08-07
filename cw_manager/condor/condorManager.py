@@ -1,9 +1,9 @@
 import .writeCondor as wc
 import numpy as np
 from pathlib import Path
-import ..utils.filePath as fp
-import ..utils.setup_parameter as setup
-import ..utils.utils as utils
+from ..utils import filePath as fp
+from ..utils import setup_parameter as setup
+from ..utils import utils as utils
 from tqdm import tqdm
 
 class condorManager:

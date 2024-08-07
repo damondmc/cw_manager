@@ -1,8 +1,8 @@
 ############# basic functions 
 import numpy as np
-import .setup_parameter as setup
+from . import setup_parameter as setup
 from pathlib import Path
-import .filePath as fp
+from . import filePath as fp
 from astropy.io import fits
 
 def sftEnsemble(freq, obsDay, OSDF=False):

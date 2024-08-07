@@ -1,13 +1,13 @@
-import .readFile as rf
-import .tools as tools
+from . import readFile as rf
+from . import tools as tools
 from astropy.io import fits
 from astropy.table import Table, vstack
 import numpy as np
-import ..utils.filePath as fp
-import ..utils.setup_parameter as setup
-import ..genParam.frequencyRange as fr
+from ..utils import filePath as fp
+from ..utils import setup_parameter as setup
+from ..genParam import frequencyRange as fr
 from tqdm import tqdm
-import ..utils.utils as utils
+from ..utils import utils as utils
 from pathlib import Path
 import warnings
     

@@ -1,5 +1,5 @@
 from pathlib import Path
-import ..utils.setup_parameter as setup 
+from ..utils import setup_parameter as setup 
 
 def writeSearchSub(subFileName, executablePath, outputPath, errorPath, logPath, argListString, request_memory='15GB', request_disk='3GB', OSG=True, OSDF=False):
     #Check if directory for production files exists. If not, create it.

@@ -1,10 +1,10 @@
 #################### condor manager for estimate upper limit
 from ..analysis.resultManager import resultManager
-import .writeCondor as wc
+from . import writeCondor as wc
 import numpy as np
 from pathlib import Path
-import ..utils.filePath as fp
-import ..utils.utils as utils
+from ..utils import filePath as fp
+from ..utils import utils as utils
 from tqdm import tqdm
 
 class upperLimitManager(resultManager):

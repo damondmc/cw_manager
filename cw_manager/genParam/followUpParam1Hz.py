@@ -1,11 +1,11 @@
-import ..utils.utils as utils
+from ..utils import utils as utils
 from tqdm import tqdm
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
-import .frequencyRange as fr
-import ..utils.setup_parameter as setup
-import ..utils.filePath as fp
+from . import frequencyRange as fr
+from ..utils import setup_parameter as setup
+from ..utils import filePath as fp
                 
 class followUpParams():    
     def __init__(self, target, obsDay, fBand=0.1):

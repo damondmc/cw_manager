@@ -1,6 +1,6 @@
 #import utils.utils as utils
 import numpy as np
-import ..utils.setup_parameter as setup
+from ..utils import setup_parameter as setup
 import sys 
 
 def getNf1dot(freq, fBand, tau, df1dot=1.5e-9):

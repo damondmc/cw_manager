@@ -1,6 +1,6 @@
 # This file contains all file path used in the Weave-based SNR search pipeline
 # Please put all file path in this file for better maintanace in the future
-import .setup_parameter as setup
+from . import setup_parameter as setup
 
 
 ############################################ Core file

@@ -36,12 +36,12 @@ def injParamName():
 
 
 def memoryUsage(self, stage):
-	if 'search' in stage:
-		memory = '10GB'
+    if 'search' in stage:
+        memory = '10GB'
                 
-	elif 'follow' in stage:
-		memory = '2GB'
-       return memory
+    elif 'follow' in stage:
+        memory = '2GB'
+    return memory
     
  
 def getSpacing(dataFilePath, freqDerivOrder):

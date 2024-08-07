@@ -17,8 +17,8 @@ def writeSearchSub(subFileName, executablePath, outputPath, errorPath, logPath, 
         subfile.write('output = {0}\n'.format(outputPath))
         subfile.write('error = {0}\n'.format(errorPath))
         subfile.write('log = {0}\n'.format(logPath))
-		subfile.write('max_retries = {0}\n'.format(2)) # Retry this job X times if non-zero exit code
-		subfile.write('periodic_release = (HoldReasonSubCode == 13)\n') # Release the job if holdReason match 
+        subfile.write('max_retries = {0}\n'.format(2)) # Retry this job X times if non-zero exit code
+        subfile.write('periodic_release = (HoldReasonSubCode == 13)\n') # Release the job if holdReason match 
 		# HoldReasonSubCode=13: Transfer files failed.
 
 		#subfile.write('priority = 10\n')

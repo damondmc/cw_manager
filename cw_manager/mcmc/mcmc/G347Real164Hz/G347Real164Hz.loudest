@@ -1,0 +1,52 @@
+%% cmdline: lalpulsar_ComputeFstatistic_v2 --Alpha=4.509411302430324 --Delta=-0.6951804179775067 --Freq=164.4591425584143 --f1dot=-1.74663549700975e-09 --f2dot=6.368602494611896e-20 --DataFiles="/home/hoitim.cheung/snrsearch/o4/SFTs/narrowBand/240days/H1/164/H-7338_H1_1800SFT_O4RUN+R1+CGDSCALIBSTRAINCLEANGATEDG01+WTKEY5_NBF0163Hz0W0003Hz0-1368980712-20472783.sft;/home/hoitim.cheung/snrsearch/o4/SFTs/narrowBand/240days/L1/164/L-7622_L1_1800SFT_O4RUN+R1+CGDSCALIBSTRAINCLEANGATEDG01+WTKEY5_NBF0163Hz0W0003Hz0-1368976350-20451259.sft" --refTime=1379338000 --outputLoudest="mcmc/G347Real164Hz/G347Real164Hz.loudest" --minStartTime=1368970000 --maxStartTime=1389706000 --ephemEarth="earth00-40-DE405.dat.gz" --ephemSun="sun00-40-DE405.dat.gz"
+%% LAL: 7.3.1 (CLEAN ba834368942ae59461ae5154fcf542c4d5a3b5b2)
+%% LALFrame: 3.0.1 (CLEAN bbd22b0556c6f8e37ca4e5005c57892d28040329)
+%% LALSimulation: 5.2.1 (CLEAN 2112931125648ecb69d9792bc9ac1d98870c8f47)
+%% LALInference: 4.1.3 (CLEAN 8fc7f8d96f5d63e9ee93d9cd02648cbd4ba16676)
+%% LALPulsar: 6.0.4 (CLEAN 0f8bf634641ead55121bb005ed28dc359124519d)
+%% FstatMethod used: 'DemodSSE'
+%% Started search: 2024-06-23 11:37:53.2823
+%% Loaded SFTs: [ H1:7338, L1:7622 ]
+%% GPS starttime         = 1368976350 (Wed May 24 15:12:12 2023 GMT)
+%% Total time spanned    = 20477145 s (5688.10 hours)
+%% Pulsar-params refTime = 1379338000
+%% Spin-range at refTime: fkdot = [ 164.4591425584143:164.4591425584143, -1.74663549700975e-09:-1.74663549700975e-09, 6.368602494611896e-20:6.368602494611896e-20, 0:0, 0:0, 0:0, 0:0 ]
+
+refTime  = 1379338000;
+
+aPlus    =  1.30552e-26;
+daPlus   =  2.34006e-27;
+aCross   = -6.42058e-27;
+daCross  =  2.30671e-27;
+phi0     =  1.69768;
+dphi0    =  0.262746;
+psi      = -0.0663705;
+dpsi     =  0.130227;
+h0    =  2.44225e-26;
+dh0   =  3.65543e-27;
+cosi  = -0.262896;
+dcosi =  0.0479277;
+
+Alpha    =  4.509411302430324;
+Delta    = -0.6951804179775065;
+Freq     =  164.4591425584143;
+f1dot    = -1.74663549700975e-09;
+f2dot    =  6.368602494611896e-20;
+f3dot    =  0;
+
+Ad       =  3050.98;
+Bd       =  3136.52;
+Cd       =  23.9838;
+Ed       =  0;
+Sinv_Tsft=  1.19781e+50;
+
+Fa       =  279.964  -123.408i;
+Fb       =  37.0614  +155.247i;
+twoF     =  77.7003;
+
+AmpFisher =  [ 
+3049.1501, 5.36142777e-14, -0.613240717, 2.49385478;
+3.56224681e-14, 3137.97675, 1.17608883, -1.15680442;
+0.578402208, -1.24692739, 38.872174, -62.1206627;
+-2.35217766, 1.22648143, -62.1206627, 158.23833;
+ ];

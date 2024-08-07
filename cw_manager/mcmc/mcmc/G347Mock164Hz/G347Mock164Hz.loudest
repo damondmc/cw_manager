@@ -1,0 +1,52 @@
+%% cmdline: lalpulsar_ComputeFstatistic_v2 --Alpha=4.509360779416754 --Delta=-0.6950945912442523 --Freq=164.4591425008581 --f1dot=-1.746717594831438e-09 --f2dot=4.530954025984074e-20 --DataFiles="mcmc/G347Mock164Hz/H-7440_H1_1800SFT_G347Mock164Hz-1368970000-13392000.sft;mcmc/G347Mock164Hz/L-7440_L1_1800SFT_G347Mock164Hz-1368970000-13392000.sft" --refTime=1375666000 --outputLoudest="mcmc/G347Mock164Hz/G347Mock164Hz.loudest" --minStartTime=1368970000 --maxStartTime=1382362000 --ephemEarth="earth00-40-DE405.dat.gz" --ephemSun="sun00-40-DE405.dat.gz"
+%% LAL: 7.3.1 (CLEAN ba834368942ae59461ae5154fcf542c4d5a3b5b2)
+%% LALFrame: 3.0.1 (CLEAN bbd22b0556c6f8e37ca4e5005c57892d28040329)
+%% LALSimulation: 5.2.1 (CLEAN 2112931125648ecb69d9792bc9ac1d98870c8f47)
+%% LALInference: 4.1.3 (CLEAN 8fc7f8d96f5d63e9ee93d9cd02648cbd4ba16676)
+%% LALPulsar: 6.0.4 (CLEAN 0f8bf634641ead55121bb005ed28dc359124519d)
+%% FstatMethod used: 'DemodSSE'
+%% Started search: 2024-06-23 12:01:23.7036
+%% Loaded SFTs: [ H1:7440, L1:7440 ]
+%% GPS starttime         = 1368970000 (Wed May 24 13:26:22 2023 GMT)
+%% Total time spanned    = 13392000 s (3720.00 hours)
+%% Pulsar-params refTime = 1375666000
+%% Spin-range at refTime: fkdot = [ 164.4591425008581:164.4591425008581, -1.746717594831438e-09:-1.746717594831438e-09, 4.530954025984074e-20:4.530954025984074e-20, 0:0, 0:0, 0:0, 0:0 ]
+
+refTime  = 1375666000;
+
+aPlus    =  1.02587e-25;
+daPlus   =  5.97199e-27;
+aCross   =  9.08774e-26;
+daCross  =  6.02367e-27;
+phi0     =  4.1031;
+dphi0    =  0.362679;
+psi      =  0.446609;
+dpsi     =  0.181528;
+h0    =  1.50182e-25;
+dh0   =  7.31702e-27;
+cosi  =  0.605115;
+dcosi =  0.0101336;
+
+Alpha    =  4.509360779416754;
+Delta    = -0.6950945912442523;
+Freq     =  164.4591425008581;
+f1dot    = -1.746717594831438e-09;
+f2dot    =  4.530954025984074e-20;
+f3dot    =  0;
+
+Ad       =  2948.22;
+Bd       =  3167.97;
+Cd       =  5.80706;
+Ed       =  0;
+Sinv_Tsft=  1.82031e+49;
+
+Fa       =  187.442  -830.059i;
+Fb       = -883.299  -316.437i;
+twoF     =  1046.78;
+
+AmpFisher =  [ 
+3084.42786, 9.80767308e-14, 30.0513971, 67.8468433;
+1.74207041e-13, 3031.73561, -32.1261924, -56.9186077;
+28.4593039, -33.9234217, 523.328584, 1037.9385;
+64.2523847, -60.1027943, 1037.9385, 2088.96871;
+ ];

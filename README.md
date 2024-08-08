@@ -7,9 +7,5 @@
 ### To install,
 
 ```
-python setup.py sdist bdist_wheel
+python -m pip install . 
 ```
-```
- pip install .
-```
-  

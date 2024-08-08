@@ -2,10 +2,10 @@ from setuptools import setup, find_packages
 
 setup(
     name='cw_manager',
-    version='0.0.1',
+    version='1.0',
     packages=find_packages(),
     install_requires=[
-        # List your package dependencies here
+    "numpy", "astropy", "pathlib", "tqdm", "scipy"  
     ],
     author='Damon Cheung',
     author_email='damoncht@umich.edu',

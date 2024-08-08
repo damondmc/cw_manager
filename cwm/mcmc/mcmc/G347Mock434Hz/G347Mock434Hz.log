@@ -1,0 +1,103 @@
+24-06-24 02:10:56.930 pyfstat.core INFO    : Creating Writer object...
+24-06-24 02:10:56.930 pyfstat.utils.ephemeris INFO    : No /home/hoitim.cheung/.pyfstat.conf file found. Will fall back to lal's automatic path resolution for files [earth00-40-DE405.dat.gz,sun00-40-DE405.dat.gz]. Alternatively, set 'earth_ephem' and 'sun_ephem' class options.
+24-06-24 02:10:56.931 pyfstat.make_sfts INFO    : Estimating required SFT frequency range from properties of signal to inject plus 59 extra bins either side (corresponding to default F-statistic settings).
+24-06-24 02:10:56.931 pyfstat.make_sfts INFO    : Generating SFTs with fmin=434.82274622169183, Band=0.2544881261128684
+24-06-24 02:10:56.931 pyfstat.make_sfts INFO    : Checking if we can re-use injection config file...
+24-06-24 02:10:56.931 pyfstat.make_sfts INFO    : ...no config file mcmc/G347Mock434Hz/G347Mock434Hz.cff found.
+24-06-24 02:10:56.931 pyfstat.make_sfts INFO    : Writing config file: mcmc/G347Mock434Hz/G347Mock434Hz.cff
+24-06-24 02:10:56.932 pyfstat.make_sfts INFO    : Checking if we can re-use existing SFT data file(s)...
+24-06-24 02:10:56.932 pyfstat.make_sfts INFO    : ...no SFT file matching 'mcmc/G347Mock434Hz/H-7440_H1_1800SFT_G347Mock434Hz-1368970000-13392000.sft' found. Will create new SFT file(s).
+24-06-24 02:10:56.933 pyfstat.utils.cli INFO    : Now executing: lalpulsar_Makefakedata_v5 --outSingleSFT=TRUE --outSFTdir="mcmc/G347Mock434Hz" --outLabel="G347Mock434Hz" --IFOs="H1","L1" --sqrtSX="1e-23" --startTime=1368970000 --duration=13392000 --fmin=434.8227462216918 --Band=0.2544881261128684 --Tsft=1800 --injectionSources="mcmc/G347Mock434Hz/G347Mock434Hz.cff" --ephemEarth="earth00-40-DE405.dat.gz" --ephemSun="sun00-40-DE405.dat.gz"
+24-06-24 02:11:00.280 pyfstat.make_sfts INFO    : Successfully wrote SFTs to: mcmc/G347Mock434Hz/H-7440_H1_1800SFT_G347Mock434Hz-1368970000-13392000.sft;mcmc/G347Mock434Hz/L-7440_L1_1800SFT_G347Mock434Hz-1368970000-13392000.sft
+24-06-24 02:11:00.280 pyfstat.make_sfts INFO    : Now validating each SFT file...
+24-06-24 02:11:00.648 pyfstat.core INFO    : Creating MCMCSearch object...
+24-06-24 02:11:00.648 pyfstat.utils.ephemeris INFO    : No /home/hoitim.cheung/.pyfstat.conf file found. Will fall back to lal's automatic path resolution for files [earth00-40-DE405.dat.gz,sun00-40-DE405.dat.gz]. Alternatively, set 'earth_ephem' and 'sun_ephem' class options.
+24-06-24 02:11:00.650 pyfstat.mcmc_based_searches INFO    : Set-up MCMC search for model G347Mock434Hz
+24-06-24 02:11:00.650 pyfstat.mcmc_based_searches INFO    : Using data mcmc/G347Mock434Hz/H-7440_H1_1800SFT_G347Mock434Hz-1368970000-13392000.sft;mcmc/G347Mock434Hz/L-7440_L1_1800SFT_G347Mock434Hz-1368970000-13392000.sft
+24-06-24 02:11:00.651 pyfstat.mcmc_based_searches INFO    : theta_prior = {'Alpha': {'type': 'unif', 'lower': 4.5093205, 'upper': 4.5094205}, 'Delta': {'type': 'unif', 'lower': -0.6952891, 'upper': -0.6950891}, 'F0': {'type': 'unif', 'lower': 434.94997605, 'upper': 434.94997804999997}, 'F1': {'type': 'unif', 'lower': -7.22595492e-09, 'upper': -7.225754920000001e-09}, 'F2': {'type': 'unif', 'lower': 2.61694354e-19, 'upper': 4.61694354e-19}}
+24-06-24 02:11:00.651 pyfstat.mcmc_based_searches INFO    : nwalkers=200
+24-06-24 02:11:00.651 pyfstat.mcmc_based_searches INFO    : nsteps = [300, 300]
+24-06-24 02:11:00.651 pyfstat.mcmc_based_searches INFO    : ntemps = 2
+24-06-24 02:11:00.651 pyfstat.mcmc_based_searches INFO    : log10beta_min = -0.5
+24-06-24 02:11:00.651 pyfstat.mcmc_based_searches INFO    : Setting up search object
+24-06-24 02:11:00.651 pyfstat.core INFO    : Creating ComputeFstat object...
+24-06-24 02:11:00.651 pyfstat.utils.ephemeris INFO    : No /home/hoitim.cheung/.pyfstat.conf file found. Will fall back to lal's automatic path resolution for files [earth00-40-DE405.dat.gz,sun00-40-DE405.dat.gz]. Alternatively, set 'earth_ephem' and 'sun_ephem' class options.
+24-06-24 02:11:00.652 pyfstat.core INFO    : Initialising SFTCatalog from sftfilepattern.
+24-06-24 02:11:00.652 pyfstat.core INFO    : Loading data matching SFT file name pattern 'mcmc/G347Mock434Hz/H-7440_H1_1800SFT_G347Mock434Hz-1368970000-13392000.sft;mcmc/G347Mock434Hz/L-7440_L1_1800SFT_G347Mock434Hz-1368970000-13392000.sft' with constraints minStartTime=1368970000, maxStartTime=1382362000.
+24-06-24 02:11:00.848 pyfstat.core INFO    : Data contains SFT timestamps from 1368970000 (Wed May 24 13:26:22 2023 UTC) to (including) 1382360200 (Thu Oct 26 12:56:22 2023 UTC).
+24-06-24 02:11:00.875 pyfstat.core INFO    : Loaded 14880 SFTs from 2 detectors: ['H1', 'L1']
+24-06-24 02:11:00.894 pyfstat.core INFO    : Initialising ephems
+24-06-24 02:11:02.130 pyfstat.core INFO    : Initialising Fstat arguments
+24-06-24 02:11:02.181 pyfstat.core INFO    : [minCoverFreq,maxCoverFreq] not provided, trying to estimate from search ranges.
+24-06-24 02:11:02.182 pyfstat.core INFO    : Using minCoverFreq=434.85552008846327 and maxCoverFreq=435.04446048186213.
+24-06-24 02:11:02.182 pyfstat.core INFO    : Initialising FstatInput
+24-06-24 02:11:03.130 pyfstat.core INFO    : Initialising PulsarDoplerParams
+24-06-24 02:11:03.130 pyfstat.core INFO    : Initialising FstatResults
+24-06-24 02:11:03.132 pyfstat.mcmc_based_searches INFO    : No pickled data found
+24-06-24 02:11:03.133 pyfstat.mcmc_based_searches INFO    : Estimated run-time = 957.3119999999999 s = 15:57 m
+24-06-24 02:11:03.133 pyfstat.mcmc_based_searches INFO    : Generate initial values from prior dictionary
+24-06-24 02:11:03.140 pyfstat.mcmc_based_searches INFO    : Checking temperature 0 chains
+24-06-24 02:11:04.823 pyfstat.mcmc_based_searches INFO    : Checking temperature 1 chains
+24-06-24 02:11:06.519 pyfstat.mcmc_based_searches INFO    : Running final burn and prod with 600 steps
+24-06-24 02:39:29.363 pyfstat.mcmc_based_searches INFO    : Mean acceptance fraction: [0.500775   0.41241667]
+24-06-24 02:39:29.364 pyfstat.mcmc_based_searches INFO    : Tswap acceptance fraction: [0.20716667 0.20716667]
+24-06-24 02:39:29.370 pyfstat.mcmc_based_searches INFO    : Autocorrelation length: [[80.3925224  29.83388245 81.40972173 71.15538374 80.55250005]
+ [60.39851736 31.67852371 46.72008621 29.892921   65.19595364]]
+24-06-24 02:39:29.416 pyfstat.mcmc_based_searches INFO    : Exporting samples to mcmc/G347Mock434Hz/G347Mock434Hz_samples.dat
+24-06-24 02:39:29.752 pyfstat.utils.runlalsuite INFO    : Running CFSv2 to get .loudest file
+24-06-24 02:39:29.752 pyfstat.utils.cli INFO    : Now executing: lalpulsar_ComputeFstatistic_v2 --DataFiles="mcmc/G347Mock434Hz/H-7440_H1_1800SFT_G347Mock434Hz-1368970000-13392000.sft;mcmc/G347Mock434Hz/L-7440_L1_1800SFT_G347Mock434Hz-1368970000-13392000.sft" --outputLoudest=mcmc/G347Mock434Hz/G347Mock434Hz.loudest --refTime=1375666000.0 --Alpha=4.509381696221095 --Delta=-0.6952552705332765 --Freq=434.9499760548464 --f1dot=-7.225845051187171e-09 --f2dot=3.965724447010503e-19 --minStartTime=1368970000 --maxStartTime=1382362000 --ephemEarth=earth00-40-DE405.dat.gz --ephemSun=sun00-40-DE405.dat.gz
+24-06-24 02:39:32.814 pyfstat.utils.cli INFO    : 2024-06-24 02:39:29.9065 (3662959) [normal]: Finding all SFTs to load ... done. (found 14880 SFTs)
+24-06-24 02:39:32.814 pyfstat.utils.cli INFO    : 2024-06-24 02:39:31.6571 (3662959) [normal]: Setting up template grid ... template grid ready.
+24-06-24 02:39:32.814 pyfstat.utils.cli INFO    : %% cmdline: lalpulsar_ComputeFstatistic_v2 --Alpha=4.509381696221095 --Delta=-0.6952552705332765 --Freq=434.9499760548464 --f1dot=-7.225845051187171e-09 --f2dot=3.965724447010503e-19 --DataFiles="mcmc/G347Mock434Hz/H-7440_H1_1800SFT_G347Mock434Hz-1368970000-13392000.sft;mcmc/G347Mock434Hz/L-7440_L1_1800SFT_G347Mock434Hz-1368970000-13392000.sft" --refTime=1375666000 --outputLoudest="mcmc/G347Mock434Hz/G347Mock434Hz.loudest" --minStartTime=1368970000 --maxStartTime=1382362000 --ephemEarth="earth00-40-DE405.dat.gz" --ephemSun="sun00-40-DE405.dat.gz"
+24-06-24 02:39:32.814 pyfstat.utils.cli INFO    : %% LAL: 7.3.1 (CLEAN ba834368942ae59461ae5154fcf542c4d5a3b5b2)
+24-06-24 02:39:32.814 pyfstat.utils.cli INFO    : %% LALFrame: 3.0.1 (CLEAN bbd22b0556c6f8e37ca4e5005c57892d28040329)
+24-06-24 02:39:32.814 pyfstat.utils.cli INFO    : %% LALSimulation: 5.2.1 (CLEAN 2112931125648ecb69d9792bc9ac1d98870c8f47)
+24-06-24 02:39:32.815 pyfstat.utils.cli INFO    : %% LALInference: 4.1.3 (CLEAN 8fc7f8d96f5d63e9ee93d9cd02648cbd4ba16676)
+24-06-24 02:39:32.815 pyfstat.utils.cli INFO    : %% LALPulsar: 6.0.4 (CLEAN 0f8bf634641ead55121bb005ed28dc359124519d)
+24-06-24 02:39:32.815 pyfstat.utils.cli INFO    : %% FstatMethod used: 'DemodSSE'
+24-06-24 02:39:32.815 pyfstat.utils.cli INFO    : %% Started search: 2024-06-24 02:39:32.7135
+24-06-24 02:39:32.815 pyfstat.utils.cli INFO    : %% Loaded SFTs: [ H1:7440, L1:7440 ]
+24-06-24 02:39:32.815 pyfstat.utils.cli INFO    : %% GPS starttime         = 1368970000 (Wed May 24 13:26:22 2023 GMT)
+24-06-24 02:39:32.815 pyfstat.utils.cli INFO    : %% Total time spanned    = 13392000 s (3720.00 hours)
+24-06-24 02:39:32.815 pyfstat.utils.cli INFO    : %% Pulsar-params refTime = 1375666000
+24-06-24 02:39:32.815 pyfstat.utils.cli INFO    : %% Spin-range at refTime: fkdot = [ 434.9499760548464:434.9499760548464, -7.225845051187171e-09:-7.225845051187171e-09, 3.965724447010503e-19:3.965724447010503e-19, 0:0, 0:0, 0:0, 0:0 ]
+24-06-24 02:39:32.815 pyfstat.utils.cli INFO    : 2024-06-24 02:39:32.7966 (3662959) [normal]: Search finished.
+24-06-24 02:39:32.815 pyfstat.mcmc_based_searches INFO    : Plotting temperature 0 chains
+24-06-24 02:39:36.310 pyfstat.mcmc_based_searches INFO    : Summary:
+24-06-24 02:39:36.311 pyfstat.mcmc_based_searches INFO    : Max twoF: 1195.6275634765625 with parameters:
+24-06-24 02:39:36.311 pyfstat.mcmc_based_searches INFO    :   Alpha      = 4.509381696e+00
+24-06-24 02:39:36.311 pyfstat.mcmc_based_searches INFO    :   Delta      = -6.952552705e-01
+24-06-24 02:39:36.311 pyfstat.mcmc_based_searches INFO    :   F0         = 4.349499761e+02
+24-06-24 02:39:36.311 pyfstat.mcmc_based_searches INFO    :   F1         = -7.225845051e-09
+24-06-24 02:39:36.311 pyfstat.mcmc_based_searches INFO    :   F2         = 3.965724447e-19
+24-06-24 02:39:36.311 pyfstat.mcmc_based_searches INFO    : Mean +- std for production values:
+24-06-24 02:39:36.312 pyfstat.mcmc_based_searches INFO    :   Alpha      = 4.509374505e+00 +/- 5.945421509e-06
+24-06-24 02:39:36.312 pyfstat.mcmc_based_searches INFO    :   Delta      = -6.952160245e-01 +/- 3.061138937e-05
+24-06-24 02:39:36.312 pyfstat.mcmc_based_searches INFO    :   F0         = 4.349499767e+02 +/- 4.521399993e-07
+24-06-24 02:39:36.312 pyfstat.mcmc_based_searches INFO    :   F1         = -7.225853755e-09 +/- 1.948542590e-14
+24-06-24 02:39:36.312 pyfstat.mcmc_based_searches INFO    :   F2         = 3.754266673e-19 +/- 1.593743601e-20
+24-06-24 02:39:36.312 pyfstat.mcmc_based_searches INFO    : Median and 90% quantiles for production values:
+24-06-24 02:39:36.312 pyfstat.mcmc_based_searches INFO    :   Alpha      = 4.509375115e+00 - 1.139394044e-05 + 8.105765402e-06
+24-06-24 02:39:36.312 pyfstat.mcmc_based_searches INFO    :   Delta      = -6.952218842e-01 - 3.265593884e-05 + 6.608638720e-05
+24-06-24 02:39:36.312 pyfstat.mcmc_based_searches INFO    :   F0         = 4.349499766e+02 - 4.746985951e-07 + 9.864212416e-07
+24-06-24 02:39:36.313 pyfstat.mcmc_based_searches INFO    :   F1         = -7.225853739e-09 - 3.177872715e-14 + 3.207752934e-14
+24-06-24 02:39:36.313 pyfstat.mcmc_based_searches INFO    :   F2         = 3.785638278e-19 - 3.461520307e-20 + 1.678383619e-20
+24-06-24 02:39:39.532 pyfstat.mcmc_based_searches WARNING : plot_prior_posterior(): Missing keys {'F1', 'F2', 'F0', 'Delta', 'Alpha'} in 'injection_parameters', no injection parameters will be highlighted.
+24-06-24 02:39:41.939 pyfstat.utils.runlalsuite INFO    : Running CFSv2 to get .loudest file
+24-06-24 02:39:41.940 pyfstat.utils.cli INFO    : Now executing: lalpulsar_ComputeFstatistic_v2 --DataFiles="mcmc/G347Mock434Hz/H-7440_H1_1800SFT_G347Mock434Hz-1368970000-13392000.sft;mcmc/G347Mock434Hz/L-7440_L1_1800SFT_G347Mock434Hz-1368970000-13392000.sft" --outputLoudest=mcmc/G347Mock434Hz/G347Mock434Hz.loudest --refTime=1375666000.0 --Alpha=4.509381696221095 --Delta=-0.6952552705332765 --Freq=434.9499760548464 --f1dot=-7.225845051187171e-09 --f2dot=3.965724447010503e-19 --minStartTime=1368970000 --maxStartTime=1382362000 --ephemEarth=earth00-40-DE405.dat.gz --ephemSun=sun00-40-DE405.dat.gz
+24-06-24 02:39:44.897 pyfstat.utils.cli INFO    : 2024-06-24 02:39:42.0088 (3663077) [normal]: Finding all SFTs to load ... done. (found 14880 SFTs)
+24-06-24 02:39:44.898 pyfstat.utils.cli INFO    : 2024-06-24 02:39:43.8313 (3663077) [normal]: Setting up template grid ... template grid ready.
+24-06-24 02:39:44.898 pyfstat.utils.cli INFO    : %% cmdline: lalpulsar_ComputeFstatistic_v2 --Alpha=4.509381696221095 --Delta=-0.6952552705332765 --Freq=434.9499760548464 --f1dot=-7.225845051187171e-09 --f2dot=3.965724447010503e-19 --DataFiles="mcmc/G347Mock434Hz/H-7440_H1_1800SFT_G347Mock434Hz-1368970000-13392000.sft;mcmc/G347Mock434Hz/L-7440_L1_1800SFT_G347Mock434Hz-1368970000-13392000.sft" --refTime=1375666000 --outputLoudest="mcmc/G347Mock434Hz/G347Mock434Hz.loudest" --minStartTime=1368970000 --maxStartTime=1382362000 --ephemEarth="earth00-40-DE405.dat.gz" --ephemSun="sun00-40-DE405.dat.gz"
+24-06-24 02:39:44.898 pyfstat.utils.cli INFO    : %% LAL: 7.3.1 (CLEAN ba834368942ae59461ae5154fcf542c4d5a3b5b2)
+24-06-24 02:39:44.898 pyfstat.utils.cli INFO    : %% LALFrame: 3.0.1 (CLEAN bbd22b0556c6f8e37ca4e5005c57892d28040329)
+24-06-24 02:39:44.898 pyfstat.utils.cli INFO    : %% LALSimulation: 5.2.1 (CLEAN 2112931125648ecb69d9792bc9ac1d98870c8f47)
+24-06-24 02:39:44.898 pyfstat.utils.cli INFO    : %% LALInference: 4.1.3 (CLEAN 8fc7f8d96f5d63e9ee93d9cd02648cbd4ba16676)
+24-06-24 02:39:44.898 pyfstat.utils.cli INFO    : %% LALPulsar: 6.0.4 (CLEAN 0f8bf634641ead55121bb005ed28dc359124519d)
+24-06-24 02:39:44.898 pyfstat.utils.cli INFO    : %% FstatMethod used: 'DemodSSE'
+24-06-24 02:39:44.898 pyfstat.utils.cli INFO    : %% Started search: 2024-06-24 02:39:44.8670
+24-06-24 02:39:44.898 pyfstat.utils.cli INFO    : %% Loaded SFTs: [ H1:7440, L1:7440 ]
+24-06-24 02:39:44.898 pyfstat.utils.cli INFO    : %% GPS starttime         = 1368970000 (Wed May 24 13:26:22 2023 GMT)
+24-06-24 02:39:44.899 pyfstat.utils.cli INFO    : %% Total time spanned    = 13392000 s (3720.00 hours)
+24-06-24 02:39:44.899 pyfstat.utils.cli INFO    : %% Pulsar-params refTime = 1375666000
+24-06-24 02:39:44.899 pyfstat.utils.cli INFO    : %% Spin-range at refTime: fkdot = [ 434.9499760548464:434.9499760548464, -7.225845051187171e-09:-7.225845051187171e-09, 3.965724447010503e-19:3.965724447010503e-19, 0:0, 0:0, 0:0, 0:0 ]
+24-06-24 02:39:44.899 pyfstat.utils.cli INFO    : 2024-06-24 02:39:44.8759 (3663077) [normal]: Search finished.

@@ -29,14 +29,9 @@ class fitSigmoid:
 
     def h0_fromPercentile(self, per=0.95):    
         x = self.inv_sigmoid(per, *self.popt)
-        a, b = self.popt.T
-        dxda =  -1.0/a**2 * np.log(per/(1-per))
-        dxdb = 1.0
-        dx = np.sqrt(self.pcov[0,0]*dxda**2 + self.pcov[1,1]*dxdb**2 + 2*self.pcov[0,1]*dxda*dxdb)
-        dh = dx*self.h0_max
-        h = self._invRescale_h0(x)
-        return h, dh/h
-    def fit(self, freq, h0_list, p):
+        return self._invRescale_h0(x) 
+
+    def fit(self, h0_list, p):
         if p[0] > 0.8 or p[-1] <0.95:
             warnings.warn("Freq={0} is problematic.".format(freq))
             
@@ -48,28 +43,26 @@ class fitSigmoid:
     
     def plot(self, h0_list, p, savePath=None):
         fig, ax = plt.subplots()
-        colors = plt.rcParams['axes.prop_cycle'].by_key()['color'] 
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
         
-        h0_low, _ = self.h0_fromPercentile(per=0.01)
-        h0_high, _ = self.h0_fromPercentile(per=0.99)
+        ax.scatter(h0_list, p, color='black')
+        err = self.binomialError(p, self.injPerPoint)
+        ax.errorbar(h0_list, p, yerr=err, fmt='', label='data', color='k', ls='none')
+        
+        
+        h0_low = self.h0_fromPercentile(per=0.01)
+        h0_high = self.h0_fromPercentile(per=0.99)
         h0_arr = np.linspace(h0_low, h0_high, 100)
         
         x = self.rescale_h0(h0_arr, h0_list)
         p_inter = self.sigmoid(x, *self.popt)
-        h0, err = self.h0_fromPercentile(per=p_inter)
         ax.plot(h0_arr, p_inter, color=colors[0], label='fit')
-        ax.errorbar(h0_arr, p_inter, xerr=h0*err, fmt='', color=colors[0], ls='none')
-                 
-        ax.scatter(h0_list, p, color='black')
-        err = self.binomialError(p, self.injPerPoint)
-        ax.errorbar(h0_list, p, yerr=err, fmt='', label='data', color='k', ls='none')
-               
-        h95, dx = self.h0_fromPercentile(per=0.95)
-        p95 = 0.95
+        
+        h95, p95 = self.h0_fromPercentile(per=0.95), 0.95
         x_highlighting = [0, h95, h95]
         y_highlighting = [p95, p95, -1]
 
-        plt.plot(x_highlighting, y_highlighting, color='r', label=r'$h_{95}=$'+'{:.3e}'.format(h95)+r'$\pm$'+'{:.2f}%'.format(dx*100))
+        plt.plot(x_highlighting, y_highlighting, color='r', label=r'$h_{95}=$'+'{:.3e}'.format(h95))
 
         ax.legend()
         ax.set_ylim(-0.05, 1.05)

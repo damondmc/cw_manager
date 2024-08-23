@@ -42,7 +42,7 @@ class upperLimitManager(resultManager):
         argsStr = self.estimateUpperLimitArgsStr()
         exe = fp.estimateUpperLimitExcutable()
         
-        wc.writeSearchSub(subFileName, exe, '/dev/null', '/dev/null', '/dev/null', argsStr, request_memory='1GB')
+        wc.writeSearchSub(subFileName, exe, False, '/dev/null', '/dev/null', '/dev/null', argsStr, request_memory='1GB')
 
         dagFileName = fp.dagFilePath('', self.target, taskName+'_{0}-{1}Hz'.format(fmin, fmax), stage)
         Path(dagFileName).unlink(missing_ok=True)

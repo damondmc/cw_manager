@@ -1,7 +1,7 @@
 from pathlib import Path
-import setup.setup_parameter as setup 
+from ..utils import setup_parameter as setup 
 
-def writeSearchSub(subFileName, executablePath, outputPath, errorPath, logPath, argListString, request_memory='15GB', request_disk='3GB', OSG=True, OSDF=False):
+def writeSearchSub(subFileName, executablePath, transfer_executable, outputPath, errorPath, logPath, argListString, request_memory='15GB', request_disk='3GB', OSG=True, OSDF=False):
     #Check if directory for production files exists. If not, create it.
     Path(Path(subFileName).resolve().parent).mkdir(parents=True, exist_ok=True)
     with open(subFileName, 'w') as subfile:
@@ -17,7 +17,11 @@ def writeSearchSub(subFileName, executablePath, outputPath, errorPath, logPath, 
         subfile.write('output = {0}\n'.format(outputPath))
         subfile.write('error = {0}\n'.format(errorPath))
         subfile.write('log = {0}\n'.format(logPath))
-        #subfile.write('priority = 10\n')
+        subfile.write('max_retries = {0}\n'.format(2)) # Retry this job X times if non-zero exit code
+        subfile.write('periodic_release = (HoldReasonSubCode == 13)\n') # Release the job if holdReason match 
+		# HoldReasonSubCode=13: Transfer files failed.
+
+		#subfile.write('priority = 10\n')
         if OSG == False: #Write sub file configured for running directly on the CIT cluster
             subfile.write("arguments = $(argList)\n\n")   
         else: #Write sub file configured for running on OSG
@@ -27,7 +31,7 @@ def writeSearchSub(subFileName, executablePath, outputPath, errorPath, logPath, 
             subfile.write('should_transfer_files = YES\n')
             subfile.write('when_to_transfer_output = ON_SUCCESS\n') # ON_EXIT_OR_EVICT  work with checkpoint file # ON_EXIT
             subfile.write('success_exit_code = 0\n')
-            subfile.write('transfer_executable=False\n')
+            subfile.write('transfer_executable={0}\n',str(transfer_executable))
             subfile.write('transfer_input_files = $(TRANSFERFILES)\n')
             subfile.write('transfer_output_files = $(OUTPUTFILE)\n')
             subfile.write('transfer_output_remaps = "$(OUTPUTFILE)=$(REMAPOUTPUTFILE)"\n\n')

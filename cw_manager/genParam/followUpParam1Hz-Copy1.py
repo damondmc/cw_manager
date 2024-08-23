@@ -14,7 +14,7 @@ class followUpParams():
         self.fBand = fBand
         self.target = target
     
-    def makeFollowUpTable(self, cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, cluster=False, workInLocalDir=False): 
+    def makeFollowUpTable(self, cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, skyUncertainty, cluster=False, workInLocalDir=False): 
         nSpacing = setup.followUp_nSpacing
         taskName = utils.taskName(self.target, stage, cohDay, oldFreqDerivOrder, freq)
         dataFilePath = fp.outlierFilePath(self.target, freq, taskName, stage, cluster=cluster)
@@ -25,7 +25,12 @@ class followUpParams():
 
         # check if there's outlier 
         if len(data) == 0:
-            return fits.BinTableHDU(data=data)        
+            return None
+           
+        ## imply search range for sky location
+        data['alpha'], data['dalpha'] = data['alpha'] - skyUncertainty, 2*skyUncertainty
+        data['delta'], data['ddelta'] = data['delta'] - skyUncertainty, 2*skyUncertainty
+        
         
         freqParamName, freqDerivParamName = utils.phaseParamName(oldFreqDerivOrder)
         newFreqParamName, newFreqDerivParamName = utils.phaseParamName(newFreqDerivOrder)
@@ -53,6 +58,9 @@ class followUpParams():
         idx1, idx2 = freqParamName[1], freqDerivParamName[1]
         eps = data[idx2] 
         # if the lower f1dot search limit is lower than the broad range lower limit, relocate it to broad range lower limit. 
+        #mask = data[idx1]<f1min
+        #data[idx1][mask] = f1min[mask] 
+        #relocate max. at the end to make sure f1dot <=0
         mask = (data[idx1]+eps)>f1max
         data[idx1][mask] = f1max[mask] - eps[mask]
     
@@ -73,6 +81,12 @@ class followUpParams():
             idx1, idx2 = freqParamName[3], freqDerivParamName[3]
             data[idx1] = f3min 
             data[idx2] = f3band
+            #eps = data[idx2]
+            #mask = data[idx1]<f3min
+            #data[idx1][mask] = f3min[mask] 
+            #relocate max. at the end to make sure f3dot <=0
+            #mask = (data[idx1]+eps)>f3max
+            #data[idx1][mask] = f3max[mask] - eps[mask]
     
         # f4dot
         if oldFreqDerivOrder >=4:
@@ -113,29 +127,31 @@ class followUpParams():
         
         return fits.BinTableHDU(data=injData)
     
-    def genFollowUpParam(self, cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, cluster=False, workInLocalDir=False):               
+    def genFollowUpParam(self, cohDay, fmin, fmax, stage, oldFreqDerivOrder, newFreqDerivOrder, skyUncertainty=0, cluster=False, workInLocalDir=False):               
         if oldFreqDerivOrder > 4 or newFreqDerivOrder > 4:
             print('Error: frequency derivative order larger than 4.')
             
         params = {}
-        dataset = self.makeFollowUpTable(cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, cluster, workInLocalDir)
-        if dataset.data.size == 0:
-            print('{0} Hz has no outlier to follow up.'.format(freq))
+        for freq in tqdm(range(fmin, fmax)):
+    
+            dataset = self.makeFollowUpTable(cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, skyUncertainty, cluster, workInLocalDir)
+            if dataset is None:
+                print('{0} Hz has no outlier to follow up.'.format(freq))
+            else:
+                params[str(freq)] = dataset
             
-        params[str(freq)] = dataset
-        
-        print('Done parameter generation of {0} from {1} for {2} Hz.'.format(self.target.name, stage, freq))
+        print('Done generation of {0} follow-up parameters for {1}-{2}Hz.'.format(self.target.name, fmin, fmax))
         return params
      
-    def genFollowUpParamFromInjection1Hz(self, cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, cluster=False):                 
+    def genFollowUpParamFromInjection1Hz(self, cohDay, fmin, fmax, stage, oldFreqDerivOrder, newFreqDerivOrder, skyUncertainty=0, cluster=False):                 
         if oldFreqDerivOrder > 4 or newFreqDerivOrder > 4:
             print('Error: frequency derivative order larger than 4.')
             
-            
+        freqList = range(fmin, fmax)
         params, injParams = {}, {}
-        
-        params[str(freq)] = self.makeFollowUpTable(cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, cluster)
-        injParams[str(freq)] = self.makeInjectionTable(cohDay, freq, stage, oldFreqDerivOrder, cluster)
+        for freq in tqdm(freqList):
+            params[str(freq)] = self.makeFollowUpTable(cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, skyUncertainty, cluster)
+            injParams[str(freq)] = self.makeInjectionTable(cohDay, freq, stage, oldFreqDerivOrder, cluster)
             
-        print('Done generation of {0} follow-up parameters for {1} Hz.'.format(self.target.name, freq))
+        print('Done generation of {0} follow-up parameters for {1}-{2}Hz.'.format(self.target.name, fmin, fmax))
         return params, injParams

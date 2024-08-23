@@ -1,8 +1,8 @@
 ############# basic functions 
 import numpy as np
-import setup.setup_parameter as setup
+from . import setup_parameter as setup
 from pathlib import Path
-import filePath.filePath as fp
+from . import filePath as fp
 from astropy.io import fits
 
 def sftEnsemble(freq, obsDay, OSDF=False):
@@ -32,7 +32,18 @@ def phaseParamName(order):
 def injParamName():
     #return ["Alpha", "Delta", "refTime", "h0", "cosi", "psi", "Freq"]
     return ["Alpha", "Delta", "refTime", "aPlus", "aCross", "psi", "Freq"]
+    
 
+
+def memoryUsage(self, stage):
+    if 'search' in stage:
+        memory = '10GB'
+                
+    elif 'follow' in stage:
+        memory = '2GB'
+    return memory
+    
+    
 def getSpacing(dataFilePath, freqDerivOrder):
     
     file = fits.open(dataFilePath)
@@ -59,7 +70,7 @@ def getTimeSetup(source, obsDay, cohDay):
     cohTime = int(cohDay*setup.secondsInDay)
     nSeg = int(obsDay/cohDay)
     obsTime = cohTime*nSeg
-    refTime = int((setup.startTime + cohTime*nSeg)-obsTime/2)
+    refTime = int(setup.startTime + obsTime/2)
     return cohDay, cohTime, nSeg, obsTime, refTime
 
 
@@ -158,7 +169,6 @@ def readOutlierData(target, freq, cohDay, freqDerivOrder, stage, cluster=False):
 
 def followUpMean2F_ratio(target, stage):
     
-
     if target.name == 'CassA':
         # 99.5% for 20000 injections
         followUpRatio = {

@@ -1,10 +1,10 @@
 #################### condor manager for estimate upper limit
-from analysis.resultManager import resultManager
-import condor.writeCondor as wc
+from ..analysis.resultManager import resultManager
+from . import writeCondor as wc
 import numpy as np
 from pathlib import Path
-import filePath.filePath as fp
-import utils.utils as utils
+from ..utils import filePath as fp
+from ..utils import utils as utils
 from tqdm import tqdm
 
 class upperLimitManager(resultManager):
@@ -42,7 +42,7 @@ class upperLimitManager(resultManager):
         argsStr = self.estimateUpperLimitArgsStr()
         exe = fp.estimateUpperLimitExcutable()
         
-        wc.writeSearchSub(subFileName, exe, '/dev/null', '/dev/null', '/dev/null', argsStr, request_memory='1GB')
+        wc.writeSearchSub(subFileName, exe, False, '/dev/null', '/dev/null', '/dev/null', argsStr, request_memory='1GB')
 
         dagFileName = fp.dagFilePath('', self.target, taskName+'_{0}-{1}Hz'.format(fmin, fmax), stage)
         Path(dagFileName).unlink(missing_ok=True)

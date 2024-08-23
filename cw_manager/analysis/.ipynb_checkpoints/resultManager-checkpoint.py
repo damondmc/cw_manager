@@ -1,13 +1,13 @@
-import analysis.readFile as rf
-import analysis.tools as tools
+from . import readFile as rf
+from . import tools as tools
 from astropy.io import fits
 from astropy.table import Table, vstack
 import numpy as np
-import filePath.filePath as fp
-import setup.setup_parameter as setup
-import genParam.frequencyRange as fr
+from ..utils import filePath as fp
+from ..utils import setup_parameter as setup
+from ..genParam import frequencyRange as fr
 from tqdm import tqdm
-import utils.utils as utils
+from ..utils import utils as utils
 from pathlib import Path
 import warnings
     
@@ -387,58 +387,60 @@ class resultManager():
                     file.write('\t{0}'.format(p[i]))
                 file.write('\n') 
         return saveFilePath
-    
-    # function to write result from weave output in each 1Hz band
-    def _writeFollowUpResult(self, cohDay,  freq, mean2F_th, nJobs, numTopListLimit=1000, stage='search', freqDerivOrder=2, inj=False, cluster=False):
+ 
+    def _writeFollowUpResult(self, cohDay, freq, mean2F_th, nJobs, numTopListLimit=1000, stage='search', freqDerivOrder=2, workInLocalDir=True, inj=False, cluster=False):
         taskName = utils.taskName(self.target, stage, cohDay, freqDerivOrder, freq)
     
-        infoFilePath  = fp.outlierInfoFilePath(self.target, freq, taskName, stage, cluster=False)
-        utils.makeDir([infoFilePath])
-
         outlierTableList = []
         injTableList = []
-        with open(infoFilePath, 'w') as infoFile:    
-            infoFile.write('#{0}\t{1}\t{2}\t{3}\n'.format('freq', 'jobIndex', 'outliers', 'saturated'))
-            for i, jobIndex in enumerate(range(1, nJobs+1)):
-                weaveFilePath = fp.weaveOutputFilePath(self.target, freq, taskName, jobIndex, stage)
-                _outlier = self.makeOutlierTable(weaveFilePath, mean2F_th[i], numTopListLimit, freqDerivOrder) 
-                #_outlier.add_column(mean2F_th*np.ones(len(data)), name='mean2F threshold')
+        info_data =np.recarray((nJobs,), dtype=[(key, '>f8') for key in ['freq', 'jobIndex', 'outliers']]) 
+ 
+        for i, jobIndex in enumerate(range(1, nJobs+1)):
+            weaveFilePath = fp.weaveOutputFilePath(self.target, freq, taskName, jobIndex, stage)
+            if workInLocalDir:
+                weaveFilePath = Path(weaveFilePath).name
+            _outlier = self.makeOutlierTable(weaveFilePath, mean2F_th[i], numTopListLimit, freqDerivOrder)  
+            if inj:
+                _outlier, _inj = self.makeInjectionTable(weaveFilePath, _outlier, freqDerivOrder)
+            if len(_outlier) == 0:
+                outlierTableList.append( _outlier )
+            else:
+                outlierTableList.append( _outlier )
                 if inj:
-                    _outlier, _inj = self.makeInjectionTable(weaveFilePath, _outlier, freqDerivOrder)
-                if len(_outlier) == 0:
-                    infoFile.write('{0}\t{1}\t{2}\t{3}\n'.format(freq, jobIndex, 0, 0))
-                    outlierTableList.append( _outlier )
-                else:
-                    infoFile.write('{0}\t{1}\t{2}\t{3}\n'.format(freq, jobIndex, len(_outlier), 0))
-                    outlierTableList.append( _outlier )
-                    if inj:
-                        injTableList.append( _inj )
-        
+                    injTableList.append( _inj )
+            info_data[i] = freq, jobIndex, len(_outlier)  
         outlier_hdul = fits.HDUList()
         # append all tables in the file into one
         if len(outlierTableList) !=0:
             outlier_hdu =  fits.BinTableHDU(data=vstack(outlierTableList))
         else:
             outlier_hdu =  fits.BinTableHDU()
+            print('No outlier.')
         outlier_hdul.append(outlier_hdu)
-
+        # if software injection is included 
         if inj:
             if len(injTableList) != 0:
                 inj_hdu =  fits.BinTableHDU(data=vstack(injTableList))
                 outlier_hdul.append(inj_hdu)
-            else:
-                print('No outlier.')
                 
-        outlierFilePath = fp.outlierFilePath(self.target, freq, taskName, stage, cluster=False)
+        # summary information of the outliers
+        info_hdu =  fits.BinTableHDU(data=info_data)
+        outlier_hdul.append(info_hdu)
+
+        outlierFilePath = fp.outlierFilePath(self.target, freq, taskName, stage, cluster=cluster)
+        if workInLocalDir:
+            outlierFilePath = Path(outlierFilePath).name
         utils.makeDir([outlierFilePath])
         outlier_hdul.writeto(outlierFilePath, overwrite=True)    
-        return 0 
-
+        return outlierFilePath
     #work flow to write injection-search result for each 1Hz band in (fmin, fmax) Hz
-    def writeFollowUpResult(self, old_cohDay, new_cohDay, freq, numTopList=1000, old_stage='search', new_stage='followUp-1', old_freqDerivOrder=2, new_freqDerivOrder=2, inj=False, cluster=False):
+    def writeFollowUpResult(self, old_cohDay, new_cohDay, freq, numTopList=1000, old_stage='search', new_stage='followUp-1', old_freqDerivOrder=2, new_freqDerivOrder=2, workInLocalDir=True, inj=False, cluster=False):
 
         taskName = utils.taskName(self.target, old_stage, old_cohDay, old_freqDerivOrder, freq)
         outlierFilePath = fp.outlierFilePath(self.target, freq, taskName, old_stage, cluster=cluster)
+        if workInLocalDir:
+            outlierFilePath = Path(outlierFilePath).name
+        
         data = fits.getdata(outlierFilePath, 1)
             
         if inj:
@@ -450,5 +452,19 @@ class resultManager():
         nJobs = mean2F_th.size
         if inj:
             mean2F_th = np.zeros(nJobs)
-        self._writeFollowUpResult(new_cohDay, freq, mean2F_th, nJobs, numTopList, new_stage, new_freqDerivOrder, inj, cluster)
+        outlierFilePath = self._writeFollowUpResult(new_cohDay, freq, mean2F_th, nJobs, numTopList, new_stage, new_freqDerivOrder, workInLocalDir, inj, cluster)
         print('Finish writing followUp result for {0} Hz'.format(freq))
+        return outlierFilePath
+
+    def emsembleFollowUpResult(self, outlierFilePathList, freq, taskName, stage, workInLocalDir=False, cluster=False):
+
+        outlierFilePath = fp.outlierFilePath(self.target, freq, taskName, stage, cluster=cluster)    
+        if workInLocalDir:
+            outlierFilePath = Path(outlierFilePath).name
+
+        outlier_hdul = fits.HDUList()
+        for filename in outlierFilePathList:
+            data = fits.getdata(filename, 1)
+            outlier_hdul.append(fits.BinTableHDU(data=data))
+        outlier_hdul.writeto(outlierFilePath, overwrite=True)    
+        return outlierFilePath

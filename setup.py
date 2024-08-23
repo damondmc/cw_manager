@@ -5,7 +5,7 @@ setup(
     version='1.0',
     packages=find_packages(),
     install_requires=[
-    "numpy", "astropy", "pathlib", "tqdm", "scipy"  
+    "numpy", "astropy", "pathlib", "tqdm", "scipy", "pyfstat" 
     ],
     author='Damon Cheung',
     author_email='damoncht@umich.edu',

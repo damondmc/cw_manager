@@ -1,13 +1,13 @@
-import utils.utils as utils
+from ..utils import utils as utils
 from tqdm import tqdm
 from astropy.io import fits
 from astropy.table import Table
 import numpy as np
-import setup.setup_parameter as setup
+import ..utils import setup_parameter as setup
 from astropy.io import fits
-import genParam.frequencyRange as fr
-import analysis.readFile as rf
-import filePath.filePath as fp
+from . import frequencyRange as fr
+from ..analysis import readFile as rf
+from ..utils import filePath as fp
     
 
 class injectionParams:    

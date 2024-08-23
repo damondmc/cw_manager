@@ -43,7 +43,7 @@ def memoryUsage(self, stage):
         memory = '2GB'
     return memory
     
- 
+    
 def getSpacing(dataFilePath, freqDerivOrder):
     
     file = fits.open(dataFilePath)
@@ -70,7 +70,7 @@ def getTimeSetup(source, obsDay, cohDay):
     cohTime = int(cohDay*setup.secondsInDay)
     nSeg = int(obsDay/cohDay)
     obsTime = cohTime*nSeg
-    refTime = int((setup.startTime + cohTime*nSeg)-obsTime/2)
+    refTime = int(setup.startTime + obsTime/2)
     return cohDay, cohTime, nSeg, obsTime, refTime
 
 
@@ -169,7 +169,6 @@ def readOutlierData(target, freq, cohDay, freqDerivOrder, stage, cluster=False):
 
 def followUpMean2F_ratio(target, stage):
     
-
     if target.name == 'CassA':
         # 99.5% for 20000 injections
         followUpRatio = {

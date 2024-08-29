@@ -23,11 +23,12 @@ class followupManager:
             argListString += " --workInLocalDir"
         return argListString
 
-    def transferFileArgs(self, configFile, exe, cohDay, freq, freqDerivOrder, stage, sftFiles, cluster=False, OSG=True):
+    def transferFileArgs(self, configFile, cohDay, freq, freqDerivOrder, stage, sftFiles, cluster=False, OSG=True):
     
         taskName = utils.taskName(self.target, 'search', cohDay, freqDerivOrder, freq)
         searchResultFile = fp.outlierFilePath(self.target, freq, taskName, 'search', cluster=cluster) 
         
+        exe = fp.followUpExecutableFilePath()
         image = fp.imageFilePath()
         inputFiles = "{}, {}, {}".format(exe, image, searchResultFile)
         for sft in sftFiles:
@@ -56,6 +57,7 @@ class followupManager:
         for jobIndex, freq in tqdm(enumerate(range(fmin, fmax), 1)):
             taskName = utils.taskName(self.target, stage, cohDay, freqDerivOrder, freq)
             exe = fp.followUpExecutableFilePath()
+            exe = Path(exe).name
             subFileName = fp.condorSubFilePath(self.target, freq, taskName, stage)
             Path(subFileName).unlink(missing_ok=True)
             
@@ -72,7 +74,7 @@ class followupManager:
             Path(dagFileName).unlink(missing_ok=True)
             # call function to write .sub files for analyze result
             ######################## Argument string use to write to DAG  ########################        
-            argList = self.transferFileArgs(configFile, exe, cohDay, freq, freqDerivOrder, stage, sftFiles, cluster, OSG)
+            argList = self.transferFileArgs(configFile, cohDay, freq, freqDerivOrder, stage, sftFiles, cluster, OSG)
                              
             # Call function from WriteCondorFiles.py which will write DAG 
             wc.writeSearchDag(dagFileName, taskName, subFileName, jobIndex, argList)

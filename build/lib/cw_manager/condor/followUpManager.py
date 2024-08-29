@@ -13,7 +13,7 @@ class followupManager:
         self.target = target
     
     def followUpArgs(self, cohDay, freq, stage, freqDerivOrder,  numTopList, sftFiles, cluster, inj, workInLocalDir): 
-        argListString = '--target {0} --obsDay {1} --cohDay {2} --freq {3} --stage {4} --freqDerivOrder {5} --numTopList {6} --sftFiles {7}'.format(
+        argListString = '--target {0} --obsDay {1} --cohDay {2} --freq {3} --stage {4} --freqDerivOrder {5} --numTopList {6} --sftFiles {7} x'.format(
                 self.target.name, self.obsDay, cohDay, freq, stage, freqDerivOrder, numTopList, ';'.join([Path(s).name for s in sftFiles]))
         if cluster:
             argListString += " --cluster"
@@ -23,11 +23,12 @@ class followupManager:
             argListString += " --workInLocalDir"
         return argListString
 
-    def transferFileArgs(self, configFile, exe, cohDay, freq, freqDerivOrder, stage, sftFiles, cluster=False, OSG=True):
+    def transferFileArgs(self, configFile, cohDay, freq, freqDerivOrder, stage, sftFiles, cluster=False, OSG=True):
     
         taskName = utils.taskName(self.target, 'search', cohDay, freqDerivOrder, freq)
         searchResultFile = fp.outlierFilePath(self.target, freq, taskName, 'search', cluster=cluster) 
         
+        exe = fp.followUpExecutableFilePath()
         image = fp.imageFilePath()
         inputFiles = "{}, {}, {}".format(exe, image, searchResultFile)
         for sft in sftFiles:
@@ -53,9 +54,14 @@ class followupManager:
             cohDay = int(cohDay)
         freqDerivOrder = int(freqDerivOrder)
         
+        taskName = utils.taskName(self.target, stage, cohDay, freqDerivOrder, str(fmin)+'-'+str(fmax)) 
+        dagFileName = fp.dagFilePath('', self.target, taskName, stage)
+        Path(dagFileName).unlink(missing_ok=True)
+        
         for jobIndex, freq in tqdm(enumerate(range(fmin, fmax), 1)):
             taskName = utils.taskName(self.target, stage, cohDay, freqDerivOrder, freq)
             exe = fp.followUpExecutableFilePath()
+            exe = Path(exe).name
             subFileName = fp.condorSubFilePath(self.target, freq, taskName, stage)
             Path(subFileName).unlink(missing_ok=True)
             
@@ -68,11 +74,9 @@ class followupManager:
             argList = self.followUpArgs(cohDay, freq, 'search', freqDerivOrder, numTopList, sftFiles, cluster, inj, workInLocalDir)
             wc.writeSearchSub(subFileName, exe, True, crFiles[0], crFiles[1], crFiles[2], argList, request_memory='4GB', request_disk='4GB', OSG=OSG, OSDF=OSDF, image=image)
             
-            dagFileName = fp.dagFilePath(freq, self.target, taskName, stage)
-            Path(dagFileName).unlink(missing_ok=True)
-            # call function to write .sub files for analyze result
+           # call function to write .sub files for analyze result
             ######################## Argument string use to write to DAG  ########################        
-            argList = self.transferFileArgs(configFile, exe, cohDay, freq, freqDerivOrder, stage, sftFiles, cluster, OSG)
+            argList = self.transferFileArgs(configFile, cohDay, freq, freqDerivOrder, stage, sftFiles, cluster, OSG)
                              
             # Call function from WriteCondorFiles.py which will write DAG 
             wc.writeSearchDag(dagFileName, taskName, subFileName, jobIndex, argList)

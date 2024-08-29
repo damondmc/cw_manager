@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: cw-manager
+Version: 1.0
+Summary: A package to manage: to create condor jobs and analysis the data for directed search of continuous gravitational wave signalsr
+Home-page: https://github.com/damondmc/cw_manager
+Author: Damon Cheung
+Author-email: damoncht@umich.edu

@@ -13,7 +13,7 @@ class followupManager:
         self.target = target
     
     def followUpArgs(self, cohDay, freq, stage, freqDerivOrder,  numTopList, sftFiles, cluster, inj, workInLocalDir): 
-        argListString = '--target {0} --obsDay {1} --cohDay {2} --freq {3} --stage {4} --freqDerivOrder {5} --numTopList {6} --sftFiles {7}'.format(
+        argListString = '--target {0} --obsDay {1} --cohDay {2} --freq {3} --stage {4} --freqDerivOrder {5} --numTopList {6} --sftFiles \"{7}\"'.format(
                 self.target.name, self.obsDay, cohDay, freq, stage, freqDerivOrder, numTopList, ';'.join([Path(s).name for s in sftFiles]))
         if cluster:
             argListString += " --cluster"

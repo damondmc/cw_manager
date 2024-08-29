@@ -9,17 +9,19 @@ def weaveExecutableFilePath():
     filePath = '/cvmfs/software.igwn.org/conda/envs/igwn-py39-20231212/bin/lalpulsar_Weave'
     return filePath
 
-    
+# path for python main program for the followUp process
+def followUpExecutableFilePath():
+    filePath = '/home/hoitim.cheung/testing/followUp.py'
+    return filePath
+
 # metric file for Weave 
 def weaveSetupFilePath(cohTime, nSeg, freqOrder):
     filePath = setup.homeDir+'metricSetup/Start{0}_TCoh{1}_N{2}_Spin{3}.fts'.format(setup.startTime, cohTime, nSeg, freqOrder)
     return filePath
 
-
 def analyzeResultExecutableFilePath():
     filePath = setup.homeDir+'/scripts/new/analyze.py'
     return filePath
-
 
 # sft files
 def sftFilePath(obsDay, freq, detector='H1', OSDF=False):
@@ -40,7 +42,6 @@ def estimateUpperLimitExcutable():
     filePath = '/cvmfs/software.igwn.org/conda/envs/igwn-py39-20231212/bin/lalpulsar_ComputeFstatMCUpperLimit'
     return filePath
     
-
 ############################################ Condor-related
 
 # file that store all dag filenames
@@ -69,8 +70,6 @@ def condorRecordFilePath(freq, target, taskName, stage):
     errorFile = setup.homeDir + 'results/{0}/{1}/{2}/{3}/ERR/{4}.err.$(JobID)'.format(stage, target.name, setup.sftSource, freq, taskName)
     logFile = setup.homeDir + 'results/{0}/{1}/{2}/{3}/LOG/{4}_Log.txt.$(JobID)'.format(stage, target.name, setup.sftSource, freq, taskName)
     return [outputFile, errorFile, logFile]
-
-
 
 ############################################ Weave output file
 
@@ -188,10 +187,6 @@ def shellResubmitFilePath():
     filePath = setup.homeDir + 'resubmitDAG.sh'.format()
     return filePath
 
-def createCondorScriptPath():
-    filePath = '/home/hoitim.cheung/cw_manager_package/createCondorFile.py'
-    return filePath
-
-def imageFilePATH():
-    filePath = 'osdf:///igwn/cit/staging/hoitim.cheung/images/cw_manager.sif'
+def imageFilePath():
+    filePath = 'osdf:///igwn/cit/staging/hoitim.cheung/images/cw_managerv6.sif'
     return filePath

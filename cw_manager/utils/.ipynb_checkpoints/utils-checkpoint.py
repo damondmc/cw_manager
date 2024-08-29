@@ -189,7 +189,7 @@ def followUpMean2F_ratio(target, stage):
 #            "followUp-5": 1.75,
             "followUp-5": 1.4,
         }    
-    elif target.name == 'G347.3-0.5':
+    elif target.name == 'G347':
         # 99.5% for 20000 injections
         followUpRatio = {
             "followUp-1": 1.35,

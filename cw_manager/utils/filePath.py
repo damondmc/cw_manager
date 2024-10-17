@@ -11,7 +11,17 @@ def weaveExecutableFilePath():
 
 # path for python main program for the followUp process
 def followUpExecutableFilePath():
-    filePath = '/home/hoitim.cheung/testing/followUp.py'
+    filePath = setup.homeDir + 'followUp.py'
+    return filePath
+
+# path for python main program for the injectionFollow process
+def injFollowUpExecutableFilePath():
+    filePath = setup.homeDir + 'followInjection.py'
+    return filePath
+
+# path for python main program for the upper limit determination process
+def upperLimitExecutableFilePath():
+    filePath = setup.homeDir + 'upperLimit.py'
     return filePath
 
 # metric file for Weave 
@@ -28,14 +38,16 @@ def sftFilePath(obsDay, freq, detector='H1', OSDF=False):
     if OSDF:
         rootDir = setup.OSDFDir 
     else:
-        rootDir = setup.homeDir
-    
+        #rootDir = setup.homeDir
+        rootDir = '/home/'+setup.user+'/o4_data/'
+        
     if detector == 'H1':
-        filePath = rootDir+'SFTs/narrowBand/{0}days/H1/{1}/'.format(obsDay, int(freq))
+        filePath = rootDir+'SFTs/narrowBand_age300yr/{0}days/H1/{1}/'.format(obsDay, int(freq))
         #filePath = rootDir+'SFTs/narrowBand_extend/{0}days/H1/{1}/'.format(obsDay, int(freq)) # for SN1987A
     elif detector == 'L1':
-        filePath = rootDir+'SFTs/narrowBand/{0}days/L1/{1}/'.format(obsDay, int(freq))
+        filePath = rootDir+'SFTs/narrowBand_age300yr/{0}days/L1/{1}/'.format(obsDay, int(freq))
         #filePath = rootDir+'SFTs/narrowBand_extend/{0}days/L1/{1}/'.format(obsDay, int(freq)) # for SN1987A
+#    print(filePath)
     return filePath
 
 def estimateUpperLimitExcutable():
@@ -187,6 +199,10 @@ def shellResubmitFilePath():
     filePath = setup.homeDir + 'resubmitDAG.sh'.format()
     return filePath
 
-def imageFilePath():
-    filePath = 'osdf:///igwn/cit/staging/hoitim.cheung/images/cw_managerv6.sif'
+def imageFilePath(OSDF=False):
+    if OSDF:    
+        filePath = 'osdf:///igwn/cit/staging/hoitim.cheung/images/'
+    else:
+        filePath = '/home/hoitim.cheung/cw_manager_package/'
+    filePath += 'cw_manager_gc.sif'
     return filePath

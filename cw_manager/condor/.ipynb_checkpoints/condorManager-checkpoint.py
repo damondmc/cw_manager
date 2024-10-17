@@ -234,7 +234,7 @@ class condorManager:
         
         #injParamName = injParamList[str(freq)].columns.names
         injParamName = self.injParamName
-        for jobIndex, (searchParam, injParam) in enumerate(zip(param, injParam, 1):
+        for jobIndex, (searchParam, injParam) in enumerate(zip(param, injParam, 1)):
             ######################## Argument string use to write to DAG  ########################
             if not OSG:
                 argList = self.weaveArgs(freq, searchParam, taskName, sftFiles, jobIndex, OSG)[:-1]

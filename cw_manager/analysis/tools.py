@@ -33,3 +33,6 @@ def appendFitsTable(table1, table2):
         hdu.data[colname][nrows1:] = table2.data[colname]
     return hdu
 """
+
+
+    

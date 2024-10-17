@@ -185,9 +185,9 @@ def followUpMean2F_ratio(target, stage):
             "followUp-2": 1.5,
             "followUp-3": 1.6,
 #            "followUp-4": 1.65,
-            "followUp-4": 1.45,
+            "followUp-4": 1.45, #top200
 #            "followUp-5": 1.75,
-            "followUp-5": 1.4,
+            "followUp-5": 1.45,
         }    
     elif target.name == 'G347':
         # 99.5% for 20000 injections
@@ -196,7 +196,7 @@ def followUpMean2F_ratio(target, stage):
             "followUp-2": 1.5,
             "followUp-3": 1.6,
             #"followUp-4": 1.65,
-            "followUp-4": 1.5,
+            "followUp-4": 1.5,#top200
             #"followUp-5": 1.75,
             "followUp-5": 1.8,
         }          

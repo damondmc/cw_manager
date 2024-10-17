@@ -1,12 +1,12 @@
-import utils.utils as utils
+from ..utils import utils as utils
 from tqdm import tqdm
 from astropy.io import fits
 import numpy as np
-import setup.setup_parameter as setup
+from ..utils import setup_parameter as setup
 from astropy.io import fits
-import genParam.frequencyRange as fr
-import analysis.readFile as rf
-import filePath.filePath as fp
+from . import frequencyRange as fr
+from ..analysis import readFile as rf
+from ..utils import filePath as fp
     
 
 class injectionParams:    
@@ -178,7 +178,7 @@ class injectionParams:
                 file.write('\n')
         return 0
 
-    def genParam(self, fmin=20, fmax=475, nBands=None, nInj=1, nAmp=1, injFreqDerivOrder=4, freqDerivOrder=2, stage='search'):
+    def genParam(self, freq, nBands=None, nInj=1, nAmp=1, injFreqDerivOrder=4, freqDerivOrder=2, stage='search', fmin=20, fmax=475):
         if freqDerivOrder > 4:
             print('Error: frequency derivative order larger than 4.')
         if injFreqDerivOrder > 4:
@@ -187,18 +187,17 @@ class injectionParams:
         searchParamDict, injParamDict = {}, {}
         nonSatBandsList = utils.loadNonSaturatedBand(self.target, fmin, fmax, nBands)
         
-        for freq in tqdm(range(fmin, fmax)):
-            nonSatBands = nonSatBandsList[(nonSatBandsList>=freq)*(nonSatBandsList<(freq+1.0))]
-            if nAmp != 1:
-                h0 = self.upperStrainLimit(freq, fmin, fmax, nBands, nonSatBands, method='ULEstimation')
-            else:
-                h0 = self.upperStrainLimit(freq, fmin, fmax, nBands, nonSatBands, method='Injection')
-            
-            ip = self.genInjParamTable(nonSatBands, h0, freq, nInj, nAmp, injFreqDerivOrder)
-            sp = self.genSearchRangeTable(freq, ip.data, stage, freqDerivOrder)
-            
-            injParamDict[str(freq)] = ip
-            searchParamDict[str(freq)] = sp
+        nonSatBands = nonSatBandsList[(nonSatBandsList>=freq)*(nonSatBandsList<(freq+1.0))]
+        if nAmp != 1:
+            h0 = self.upperStrainLimit(freq, fmin, fmax, nBands, nonSatBands, method='ULEstimation')
+        else:
+            h0 = self.upperStrainLimit(freq, fmin, fmax, nBands, nonSatBands, method='Injection')
+
+        ip = self.genInjParamTable(nonSatBands, h0, freq, nInj, nAmp, injFreqDerivOrder)
+        sp = self.genSearchRangeTable(freq, ip.data, stage, freqDerivOrder)
+
+        injParamDict[str(freq)] = ip
+        searchParamDict[str(freq)] = sp
         if nAmp !=1:    
             self.saveh0Value(injParamDict, fmin, fmax, nInj, nAmp)
         

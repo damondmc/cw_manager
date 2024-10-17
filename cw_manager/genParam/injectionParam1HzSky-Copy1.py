@@ -8,7 +8,7 @@ from astropy.io import fits
 from . import frequencyRange as fr
 from ..analysis import readFile as rf
 from ..utils import filePath as fp
-from pathlib import Path    
+    
 
 class injectionParams:    
     def __init__(self, target, obsDay, cohDay, fBand=0.1):
@@ -53,11 +53,8 @@ class injectionParams:
 
         for i in range(nInj):
             injData[i]['psi'] = np.random.uniform(0,np.pi/4.0)
-            # alpha is uniformly distributed in [0, 2pi]
             injData[i]["Alpha"] = np.random.uniform(self.target.alpha-skyUncertainty, self.target.alpha+skyUncertainty)
-            # sin(delta) is uniformly distributed in [-1, 1]
-            sinDelta = np.random.uniform(np.sin(self.target.delta-skyUncertainty), np.sin(self.target.delta+skyUncertainty))
-            injData[i]["Delta"] = np.arcsin(sinDelta)
+            injData[i]["Delta"] = np.random.uniform(self.target.delta-skyUncertainty, self.target.delta+skyUncertainty)
             injData[i]["refTime"] = self.refTime
             cosi = np.random.uniform(-1,1)
             _h0 = utils.genh0Points(i, h0, nInj, nAmp) 
@@ -84,19 +81,18 @@ class injectionParams:
             
         return fits.BinTableHDU(injData)
             
-    def genSearchRangeTable(self, dataFilePath, freq, injData, stage, freqDerivOrder):
+    def genSearchRangeTable(self, freq, injData, stage, freqDerivOrder):
         freqParamName, freqDerivParamName = utils.phaseParamName(freqDerivOrder)
         nSpacing = setup.followUp_nSpacing
         n = injData.size
-
-        _d = fits.getheader(dataFilePath)
-        spacing = {key: _d['HIERARCH ' + key] for key in freqDerivParamName}        
-
         data =np.recarray((n,), dtype=[(key, '>f8') for key in (freqParamName+freqDerivParamName)]) 
+
         for i in range(n):            
             # get frequency evolution parameters' spacing 
             taskName = utils.taskName(self.target, stage, self.cohDay, freqDerivOrder, int(freq))
-
+            dataFilePath = fp.weaveOutputFilePath(self.target, int(freq), taskName, 1, stage)
+            spacing = utils.getSpacing(dataFilePath, freqDerivOrder)
+                
             # avoid the search arange to cross the sub-band bounday and hit the saturated band
             idx1, idx2 = freqParamName[0], freqDerivParamName[0]
             eps = spacing[idx2]
@@ -189,65 +185,28 @@ class injectionParams:
                 file.write('\n')
         return 0
 
-    def genParam(self, freq, nBands=None, nInj=1, nAmp=1, injFreqDerivOrder=4, skyUncertainty=0, freqDerivOrder=2, stage='search', fmin=20, fmax=475, cluster=False, workInLocalDir=False):
+    def genParam(self, fmin=20, fmax=475, nBands=None, nInj=1, nAmp=1, injFreqDerivOrder=4, skyUncertainty=0, freqDerivOrder=2, stage='search'):
         if freqDerivOrder > 4:
             print('Error: frequency derivative order larger than 4.')
         if injFreqDerivOrder > 4:
             print('Error: Injection frequency derivative order larger than 4.')
             
         searchParamDict, injParamDict = {}, {}
-        #nonSatBandsList = utils.loadNonSaturatedBand(self.target, fmin, fmax, nBands)    
-        #nonSatBands = nonSatBandsList[(nonSatBandsList>=freq)*(nonSatBandsList<(freq+1.0))]
+        nonSatBandsList = utils.loadNonSaturatedBand(self.target, fmin, fmax, nBands)
         
-        taskName = utils.taskName(self.target, stage, self.cohDay, freqDerivOrder, freq)
-        dataFilePath = fp.outlierFilePath(self.target, freq, taskName, stage, cluster=cluster)
-        if workInLocalDir:
-            dataFilePath = Path(dataFilePath).name
-        nonSatBands = fits.getdata(dataFilePath, 3)['nonSatBand']  
-
-        if nAmp != 1:
-            h0 = self.upperStrainLimit(freq, fmin, fmax, nBands, nonSatBands, method='ULEstimation')
-        else:
-            h0 = self.upperStrainLimit(freq, fmin, fmax, nBands, nonSatBands, method='Injection')
-        
-        ip = self.genInjParamTable(nonSatBands, h0, freq, nInj, nAmp, injFreqDerivOrder, skyUncertainty)
-        sp = self.genSearchRangeTable(dataFilePath, freq, ip.data, stage, freqDerivOrder)
-        
-        injParamDict[str(freq)] = ip
-        searchParamDict[str(freq)] = sp
+        for freq in tqdm(range(fmin, fmax)):
+            nonSatBands = nonSatBandsList[(nonSatBandsList>=freq)*(nonSatBandsList<(freq+1.0))]
+            if nAmp != 1:
+                h0 = self.upperStrainLimit(freq, fmin, fmax, nBands, nonSatBands, method='ULEstimation')
+            else:
+                h0 = self.upperStrainLimit(freq, fmin, fmax, nBands, nonSatBands, method='Injection')
+            
+            ip = self.genInjParamTable(nonSatBands, h0, freq, nInj, nAmp, injFreqDerivOrder, skyUncertainty)
+            sp = self.genSearchRangeTable(freq, ip.data, stage, freqDerivOrder)
+            
+            injParamDict[str(freq)] = ip
+            searchParamDict[str(freq)] = sp
         if nAmp !=1:    
             self.saveh0Value(injParamDict, fmin, fmax, nInj, nAmp)
-        
-        return searchParamDict, injParamDict        
-
-
-    def _genParam(self, h0, freq, nBands=None, nInj=1, nAmp=1, injFreqDerivOrder=4, skyUncertainty=0, freqDerivOrder=2, stage='search', cluster=False, workInLocalDir=False):
-        if freqDerivOrder > 4:
-            print('Error: frequency derivative order larger than 4.')
-        if injFreqDerivOrder > 4:
-            print('Error: Injection frequency derivative order larger than 4.')
-            
-        searchParamDict, injParamDict = {}, {}
-        #nonSatBandsList = utils.loadNonSaturatedBand(self.target, fmin, fmax, nBands)    
-        #nonSatBands = nonSatBandsList[(nonSatBandsList>=freq)*(nonSatBandsList<(freq+1.0))]
-        
-        taskName = utils.taskName(self.target, stage, self.cohDay, freqDerivOrder, freq)
-        dataFilePath = fp.outlierFilePath(self.target, freq, taskName, stage, cluster=cluster)
-        if workInLocalDir:
-            dataFilePath = Path(dataFilePath).name
-        nonSatBands = fits.getdata(dataFilePath, 3)['nonSatBand']  
-
-        #if nAmp != 1:
-        #    h0 = self.upperStrainLimit(freq, fmin, fmax, nBands, nonSatBands, method='ULEstimation')
-        #else:
-        #    h0 = self.upperStrainLimit(freq, fmin, fmax, nBands, nonSatBands, method='Injection')
-        
-        ip = self.genInjParamTable(nonSatBands, h0, freq, nInj, nAmp, injFreqDerivOrder, skyUncertainty)
-        sp = self.genSearchRangeTable(dataFilePath, freq, ip.data, stage, freqDerivOrder)
-        
-        injParamDict[str(freq)] = ip
-        searchParamDict[str(freq)] = sp
-        #if nAmp !=1:    
-        #    self.saveh0Value(injParamDict, fmin, fmax, nInj, nAmp)
         
         return searchParamDict, injParamDict        

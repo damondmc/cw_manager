@@ -29,16 +29,19 @@ class followUpParams():
         
         freqParamName, freqDerivParamName = utils.phaseParamName(oldFreqDerivOrder)
         newFreqParamName, newFreqDerivParamName = utils.phaseParamName(newFreqDerivOrder)
+        _d = fits.getheader(dataFilePath)
+        spacing = {key: _d['HIERARCH ' + key] for key in freqDerivParamName}        
+
         for _f, _df in zip(freqParamName, freqDerivParamName):
-            data[_f] = data[_f] - nSpacing*data[_df] # it may change the sign of the parameter (from -ve to +ve or vice versa), due with it in the next step 
-            data[_df] = 2*nSpacing*data[_df] 
+            data[_f] = data[_f] - nSpacing*spacing[_df] # it may change the sign of the parameter (from -ve to +ve or vice versa), due with it in the next step 
+            data[_df] = 2*nSpacing*spacing[_df] 
             newFreqParamName.remove(_f)
             newFreqDerivParamName.remove(_df)
             
         # make the search range to be physical/consistent to the signal model (e.g. f1dot<=0, f2dot >=0)
         
         # f0
-        f0min, f0max, _ = fr.f0BroadRange(data['freq'], data['df'])
+        f0min, f0max, _ = fr.f0BroadRange(data['freq'], spacing['df'])
         idx1, idx2 = freqParamName[0], freqDerivParamName[0]
         eps = data[idx2]
        
@@ -49,15 +52,15 @@ class followUpParams():
         data[idx1][mask] = f0max[mask] - eps[mask]
         
         # f1dot
-        f1min, f1max, _ = fr.f1BroadRange(data['freq'], data['df'], self.target.tau)
+        f1min, f1max, _ = fr.f1BroadRange(data['freq'], spacing['df'], self.target.tau)
         idx1, idx2 = freqParamName[1], freqDerivParamName[1]
-        eps = data[idx2] 
+        eps = spacing[idx2] *np.ones(len(data))
         # if the lower f1dot search limit is lower than the broad range lower limit, relocate it to broad range lower limit. 
         mask = (data[idx1]+eps)>f1max
         data[idx1][mask] = f1max[mask] - eps[mask]
     
         # f2dot
-        f2min, f2max, _ = fr.f2BroadRange(data['freq'], data['df'], data['f1dot'], data['f1dot'] + data['df1dot'])
+        f2min, f2max, _ = fr.f2BroadRange(data['freq'], spacing['df'], data['f1dot'], data['f1dot'] + spacing['df1dot'])
         idx1, idx2 = freqParamName[2], freqDerivParamName[2]
         eps = data[idx2]
         mask = (data[idx1]+eps)>f2max
@@ -69,7 +72,7 @@ class followUpParams():
         ## f3dot
         if oldFreqDerivOrder >=3:
             #print('f3')
-            f3min, f3max, f3band = fr.f3BroadRange(data['freq'], data['df'], data['f1dot'], data['f1dot'] + data['df1dot'], data['f2dot'], data['f2dot']+data['df2dot'])
+            f3min, f3max, f3band = fr.f3BroadRange(data['freq'], data['df'], data['f1dot'], data['f1dot'] + spacing['df1dot'], data['f2dot'], data['f2dot']+spacing['df2dot'])
             idx1, idx2 = freqParamName[3], freqDerivParamName[3]
             data[idx1] = f3min 
             data[idx2] = f3band
@@ -77,7 +80,7 @@ class followUpParams():
         # f4dot
         if oldFreqDerivOrder >=4:
             #print('f4')
-            f4min, f4max, _ = fr.f4BroadRange(data['freq'], data['df'], data['f1dot'], data['f1dot'] + data['df1dot'], data['f2dot'], data['f2dot']+data['df2dot'])
+            f4min, f4max, _ = fr.f4BroadRange(data['freq'], data['df'], data['f1dot'], data['f1dot'] + spacing['df1dot'], data['f2dot'], data['f2dot']+spacing['df2dot'])
             idx1, idx2 = freqParamName[4], freqDerivParamName[4]
             eps = data[idx2]
             mask = (data[idx1]+eps)>f4max
@@ -91,7 +94,7 @@ class followUpParams():
             if _f == 'f3dot':
                 #print('new f3')
                 f3min, f3max, f3band = fr.f3BroadRange(
-                    data['freq'], data['df'], data['f1dot'], data['f1dot']+data['df1dot'], data['f2dot'], data['f2dot']+data['df2dot']
+                    data['freq'], data['df'], data['f1dot'], data['f1dot']+spacing['df1dot'], data['f2dot'], data['f2dot']+spacing['df2dot']
                 )
                 data.add_column(f3min, name=_f)
                 data.add_column(f3band, name=_df)
@@ -99,16 +102,18 @@ class followUpParams():
             if _f == 'f4dot':
                 #print('new f4')
                 f4min, f4max, f4band = fr.f4BroadRange(
-                    data['freq'], data['df'], data['f1dot'], data['f1dot']+data['df1dot'], data['f2dot'], data['f2dot']+data['df2dot']
+                    data['freq'], data['df'], data['f1dot'], data['f1dot']+spacing['df1dot'], data['f2dot'], data['f2dot']+spacing['df2dot']
                 )
                 data.add_column(f4min, name=_f)
                 data.add_column(f4band, name=_df)
                 
         return fits.BinTableHDU(data=data)
       
-    def makeInjectionTable(self, cohDay, freq, stage, oldFreqDerivOrder, cluster=False):  
+    def makeInjectionTable(self, cohDay, freq, stage, oldFreqDerivOrder, cluster=False, workInLocalDir=False):  
         taskName = utils.taskName(self.target, stage, cohDay, oldFreqDerivOrder, freq)
         dataFilePath = fp.outlierFilePath(self.target, freq, taskName, stage, cluster=cluster)
+        if workInLocalDir:
+            dataFilePath = Path(dataFilePath).name
         injData = Table.read(dataFilePath, hdu=2)  
         
         return fits.BinTableHDU(data=injData)
@@ -127,15 +132,15 @@ class followUpParams():
         print('Done parameter generation of {0} from {1} for {2} Hz.'.format(self.target.name, stage, freq))
         return params
      
-    def genFollowUpParamFromInjection1Hz(self, cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, cluster=False):                 
+    def genFollowUpParamFromInjection1Hz(self, cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, cluster=False, workInLocalDir=False):                 
         if oldFreqDerivOrder > 4 or newFreqDerivOrder > 4:
             print('Error: frequency derivative order larger than 4.')
             
             
         params, injParams = {}, {}
         
-        params[str(freq)] = self.makeFollowUpTable(cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, cluster)
-        injParams[str(freq)] = self.makeInjectionTable(cohDay, freq, stage, oldFreqDerivOrder, cluster)
+        params[str(freq)] = self.makeFollowUpTable(cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, cluster, workInLocalDir)
+        injParams[str(freq)] = self.makeInjectionTable(cohDay, freq, stage, oldFreqDerivOrder, cluster, workInLocalDir)
             
         print('Done generation of {0} follow-up parameters for {1} Hz.'.format(self.target.name, freq))
         return params, injParams

@@ -1,7 +1,7 @@
 from pathlib import Path
 from ..utils import setup_parameter as setup 
 
-def writeSearchSub(subFileName, executablePath, transfer_executable, outputPath, errorPath, logPath, argListString, request_memory='15GB', request_disk='3GB', OSG=True, OSDF=False, image=None):
+def writeSearchSub(subFileName, executablePath, transfer_executable, outputPath, errorPath, logPath, argListString, request_memory='15GB', request_disk='3GB', request_cpu=1, OSG=True, OSDF=False, image=None):
     #Check if directory for production files exists. If not, create it.
     Path(Path(subFileName).resolve().parent).mkdir(parents=True, exist_ok=True)
     with open(subFileName, 'w') as subfile:
@@ -9,7 +9,7 @@ def writeSearchSub(subFileName, executablePath, transfer_executable, outputPath,
         subfile.write('notification = Never\n')
         subfile.write('request_memory = {0}\n'.format(request_memory)) 
         subfile.write('request_disk = {0}\n'.format(request_disk))   
-        subfile.write('request_cpus = 1\n')
+        subfile.write('request_cpus = {0}\n'.format(request_cpu))
         subfile.write('getenv = True\n')
         subfile.write('accounting_group = {0}\n'.format(setup.accGroup))
         subfile.write('accounting_group_user = {0}\n\n'.format(setup.user))

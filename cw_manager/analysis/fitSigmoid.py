@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import warnings
 
 class fitSigmoid:    
-    def __init__(self, target, nInj=1000, nAmp=8):
+    def __init__(self, target, nInj=100, nAmp=1):
         self.target = target 
         self.injPerPoint = int(nInj/nAmp)         # number of injections per point
 
@@ -36,14 +36,15 @@ class fitSigmoid:
         dh = dx*self.h0_max
         h = self._invRescale_h0(x)
         return h, dh/h
+
     def fit(self, freq, h0_list, p):
-        if p[0] > 0.8 or p[-1] <0.95:
+        if not np.any(p) > 0.8 and not  np.any(p) < 0.96:
             warnings.warn("Freq={0} is problematic.".format(freq))
             
         err = self.binomialError(p, self.injPerPoint)
         x = self.rescale_h0(h0_list, h0_list)
         self.popt, self.pcov = curve_fit(self.sigmoid, x, p, p0=[5,0], sigma=err) 
-        #perr = np.sqrt(np.diag(pcov))    
+            
         return 0
     
     def plot(self, h0_list, p, savePath=None):
@@ -73,7 +74,7 @@ class fitSigmoid:
 
         ax.legend()
         ax.set_ylim(-0.05, 1.05)
-        ax.set_xlim(0.9*min(h0_list[0], h0_arr[0]), 1.05*max(h0_list[-1], h0_arr[-1]))       
+        ax.set_xlim(0.9*min(min(h0_list), h0_arr[0]), 1.05*max(max(h0_list), h0_arr[-1]))       
         ax.set_xlabel(r'$h_0$')
         ax.set_ylabel(r'$p_{\mathrm{det}}$')
         

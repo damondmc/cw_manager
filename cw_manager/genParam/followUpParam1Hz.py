@@ -106,9 +106,12 @@ class followUpParams():
                 
         return fits.BinTableHDU(data=data)
       
-    def makeInjectionTable(self, cohDay, freq, stage, oldFreqDerivOrder, cluster=False):  
+    def makeInjectionTable(self, cohDay, freq, stage, oldFreqDerivOrder, cluster=False, workInLocalDir=False):  
         taskName = utils.taskName(self.target, stage, cohDay, oldFreqDerivOrder, freq)
         dataFilePath = fp.outlierFilePath(self.target, freq, taskName, stage, cluster=cluster)
+        if workInLocalDir:
+            dataFilePath = Path(dataFilePath).name
+        print(dataFilePath)
         injData = Table.read(dataFilePath, hdu=2)  
         
         return fits.BinTableHDU(data=injData)
@@ -124,18 +127,18 @@ class followUpParams():
             
         params[str(freq)] = dataset
         
-        print('Done parameter generation of {0} from {1} for {2} Hz.'.format(self.target.name, stage, freq))
+        print('Done parameter generation of {0} from {1} for {2} Hz.\n'.format(self.target.name, stage, freq))
         return params
      
-    def genFollowUpParamFromInjection1Hz(self, cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, cluster=False):                 
+    def genFollowUpParamFromInjection1Hz(self, cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, cluster=False, workInLocalDir=False): 
         if oldFreqDerivOrder > 4 or newFreqDerivOrder > 4:
             print('Error: frequency derivative order larger than 4.')
-            
-            
+             
         params, injParams = {}, {}
         
-        params[str(freq)] = self.makeFollowUpTable(cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, cluster)
-        injParams[str(freq)] = self.makeInjectionTable(cohDay, freq, stage, oldFreqDerivOrder, cluster)
+        cluster=False
+        params[str(freq)] = self.makeFollowUpTable(cohDay, freq, stage, oldFreqDerivOrder, newFreqDerivOrder, cluster, workInLocalDir)
+        injParams[str(freq)] = self.makeInjectionTable(cohDay, freq, stage, oldFreqDerivOrder, cluster, workInLocalDir)
             
-        print('Done generation of {0} follow-up parameters for {1} Hz.'.format(self.target.name, freq))
+        print('Done generation of {0} follow-up parameters for {1} Hz.\n'.format(self.target.name, freq))
         return params, injParams

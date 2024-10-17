@@ -40,10 +40,10 @@ def readRunTime(filePath):
         for line in lines:
             if 'completion-loop' in line:
                 strings = line.split(',')
-                memory = re.findall(match_number, strings[1])[0]
+                time = re.findall(match_number, strings[1])[0]
                 break
         file.close()
-        return float(memory)
+        return float(time)
     except:
         print(filePath)
 

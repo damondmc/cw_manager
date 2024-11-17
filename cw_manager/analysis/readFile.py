@@ -62,3 +62,18 @@ def readEstimatedUpperStrainLimit(filePath):
         return float(h0)
     except:
         print(filePath)
+
+def isMismatchExist(filePath):
+    indicator = False 
+    file = open(filePath, 'r+')
+    lines = file.readlines()
+    #Same thing as before but with time instead of template count
+    for line in lines:
+        if 'Size not match' in line:
+            indicator = True
+            break
+    file.close()
+    return indicator
+    
+
+

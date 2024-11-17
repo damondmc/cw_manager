@@ -39,6 +39,23 @@ def sftFilePath(obsDay, freq, detector='H1', OSDF=False):
         rootDir = setup.OSDFDir 
     else:
         #rootDir = setup.homeDir
+        rootDir = '/home/'+setup.user+'/snrsearch/o4/'
+        
+    if detector == 'H1':
+        filePath = rootDir+'SFTs/narrowBand/{0}days/H1/{1}/'.format(obsDay, int(freq))
+        #filePath = rootDir+'SFTs/narrowBand_extend/{0}days/H1/{1}/'.format(obsDay, int(freq)) # for SN1987A
+    elif detector == 'L1':
+        filePath = rootDir+'SFTs/narrowBand/{0}days/L1/{1}/'.format(obsDay, int(freq))
+        #filePath = rootDir+'SFTs/narrowBand_extend/{0}days/L1/{1}/'.format(obsDay, int(freq)) # for SN1987A
+#    print(filePath)
+    return filePath
+
+
+def _sftFilePath(obsDay, freq, detector='H1', OSDF=False):
+    if OSDF:
+        rootDir = setup.OSDFDir 
+    else:
+        #rootDir = setup.homeDir
         rootDir = '/home/'+setup.user+'/o4_data/'
         
     if detector == 'H1':
@@ -204,5 +221,5 @@ def imageFilePath(OSDF=False):
         filePath = 'osdf:///igwn/cit/staging/hoitim.cheung/images/'
     else:
         filePath = '/home/hoitim.cheung/cw_manager_package/'
-    filePath += 'cw_manager_gc.sif'
+    filePath += 'cw_manager_followup_v12.sif'
     return filePath

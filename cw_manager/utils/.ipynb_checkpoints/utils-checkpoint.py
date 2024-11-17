@@ -5,6 +5,83 @@ from pathlib import Path
 from . import filePath as fp
 from astropy.io import fits
 
+# Clusters outliers based on spatial proximity in phase parameter space, guided by loudness
+def clustering(data, freqDerivOrder):
+    """
+    Parameters:
+    - data: astropy Table
+        Table containing data on outliers, including columns for loudness (`mean2F`) and phase parameters. 
+        This table is sorted and clustered based on spatial and loudness criteria.
+
+    - freqDerivOrder: int
+        Frequency derivative order, which defines the number of phase parameters and the dimensionality of the clustering space.
+    """
+    # Extract phase parameter names and spacing names according to the frequency derivative order
+    fn, dfn = phaseParamName(freqDerivOrder)
+    _data = [data[key] for key in fn]
+    _data = np.column_stack(_data)
+
+    _spacing = [data[key] for key in dfn]
+    _spacing = np.column_stack(_spacing)
+
+    # Retrieve loudness values to sort by intensity
+    loudness = data['mean2F']
+
+    # Sort data by loudness in descending order, ensuring clusters start from the loudest point
+    sorted_indices = np.argsort(-loudness)
+    sorted_coords = _data[sorted_indices]
+    sorted_loudness = loudness[sorted_indices]
+    sorted_spacing = _spacing[sorted_indices]
+
+    # Initialize list for keeping track of loudest samples and their respective spheres
+    centers_idx = []
+    cluster_size = []
+    cluster_member = []
+    # Set to keep track of processed indices
+    processed_indices = set()
+
+    # Loop over sorted samples (from loudest to least loud)
+    for i, (center, gridsize) in enumerate(zip(sorted_coords, sorted_spacing)):
+        if i in processed_indices:
+            continue  # Skip already processed samples
+
+        # Initialize list for dimension-wise indices
+        within_dim_indices = []
+
+        # Compute distances in each dimension separately and find indices within radius r0
+        for dim in range(freqDerivOrder+1):
+            r0 = setup.cluster_nSpacing * gridsize[dim]
+            distances_dim = np.abs(sorted_coords[:, dim] - center[dim])
+            within_dim = np.where(distances_dim <= r0)[0]
+            within_dim_indices.append(within_dim)
+
+        # Combine the conditions (intersection of all dimensions)
+        within_r0_indices = within_dim_indices[0]
+        for dim_indices in within_dim_indices[1:]:
+            within_r0_indices = np.intersect1d(within_r0_indices, dim_indices)
+
+        processed_indices.update(within_r0_indices)  # Mark all samples within this sphere as processed
+        centers_idx.append(sorted_indices[i])
+        cluster_size.append(len(within_r0_indices))
+        cluster_member.append(within_r0_indices)
+
+    # Convert lists to arrays
+    centers_idx = np.array(centers_idx)
+    cluster_size = np.array(cluster_size)
+
+    # Display the number of clusters formed
+    print('{} outliers are grouped to {} clusters.'.format(data.size, centers_idx.size))
+    return centers_idx, cluster_size, cluster_member
+
+def getBinTable(target, freq, cohDay, freqDerivOrder, stage, extname, cluster, workInLocalDir):
+    _taskName = taskName(target, stage, cohDay, freqDerivOrder, freq)
+    dataFilePath = fp.outlierFilePath(target, freq, _taskName, stage, cluster=cluster)
+    if workInLocalDir:
+        dataFilePath = Path(dataFilePath).name
+    data = fits.getdata(dataFilePath, extname=extname)
+    return data
+
+
 def sftEnsemble(freq, obsDay, OSDF=False):
     H1path = Path(fp.sftFilePath(obsDay, freq, detector='H1', OSDF=OSDF))
     L1path = Path(fp.sftFilePath(obsDay, freq, detector='L1', OSDF=OSDF))
@@ -32,8 +109,6 @@ def phaseParamName(order):
 def injParamName():
     #return ["Alpha", "Delta", "refTime", "h0", "cosi", "psi", "Freq"]
     return ["Alpha", "Delta", "refTime", "aPlus", "aCross", "psi", "Freq"]
-    
-
 
 def memoryUsage(self, stage):
     if 'search' in stage:
@@ -166,44 +241,3 @@ def readOutlierData(target, freq, cohDay, freqDerivOrder, stage, cluster=False):
     data = hdul[1].data
     hdul.close()
     return data
-
-def followUpMean2F_ratio(target, stage):
-    
-    if target.name == 'CassA':
-        # 99.5% for 20000 injections
-        followUpRatio = {
-            "followUp-1": 1.3,
-            "followUp-2": 1.35,
-            "followUp-3": 1.6,
-            "followUp-4": 1.65,
-            #"followUp-5": 1.,
-        }          
-    elif target.name == 'VelaJr': 
-        # 99.5% for 20000 injections
-        followUpRatio = {
-            "followUp-1": 1.35,
-            "followUp-2": 1.5,
-            "followUp-3": 1.6,
-#            "followUp-4": 1.65,
-            "followUp-4": 1.45,
-#            "followUp-5": 1.75,
-            "followUp-5": 1.4,
-        }    
-    elif target.name == 'G347':
-        # 99.5% for 20000 injections
-        followUpRatio = {
-            "followUp-1": 1.35,
-            "followUp-2": 1.5,
-            "followUp-3": 1.6,
-            #"followUp-4": 1.65,
-            "followUp-4": 1.5,
-            #"followUp-5": 1.75,
-            "followUp-5": 1.8,
-        }          
-    
-    for key in followUpRatio.keys():
-        if key in stage:
-            return followUpRatio[key]
-        
-    print('Mean2F ratio for {0} stage is not provided.'.format(stage))
-    

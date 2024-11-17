@@ -36,7 +36,7 @@ class followUpParams():
             newFreqDerivParamName.remove(_df)
             
         # make the search range to be physical/consistent to the signal model (e.g. f1dot<=0, f2dot >=0)
-        
+        """        
         # f0
         f0min, f0max, _ = fr.f0BroadRange(data['freq'], data['df'])
         idx1, idx2 = freqParamName[0], freqDerivParamName[0]
@@ -85,7 +85,7 @@ class followUpParams():
             #relocate mininum at the end to make sure f4dot >=0
             mask = data[idx1]<f4min
             data[idx1][mask] = f4min[mask]
-
+        """
         # new added f3dot - f4dot (didnt search over in the previous stage)
         for _f, _df in zip(newFreqParamName, newFreqDerivParamName):
             if _f == 'f3dot':

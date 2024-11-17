@@ -18,29 +18,6 @@ class injectionParams:
         self.fBand = fBand
         self.injParamName = utils.injParamName()
         
-    def upperStrainLimit(self, freq, fmin, fmax, nBands, nonSatBands, method='ULEstimation'):
-        try:
-            if method == 'Injection':
-                filePath = fp.sensitivityFilePath(self.target, fmin, fmax, stage='injectionUpperLimit-new')
-                _freq, h0, dx = np.loadtxt(filePath).T
-                _freq  = _freq + 0.5
-                idx = np.argmin((_freq-freq)**2)
-                #return h0[idx] *(1+ 0.75 * dx[idx]) # injection (new version), previously determined h95 is too low so make use a higher h0 for injection
-                # 1+0.5 for G347 (93%) 1+0.75 for CassA, VelaJr
-                # *1.1 for strong h0 test
-                return h0[idx] *(1+ 0.75 * dx[idx]) * 1.4
-            elif method == 'ULEstimation':
-                taskName = 'ULEstimation_{0}Days'.format(self.cohDay)
-                h0 = []
-                for f in nonSatBands:
-                    filePath = fp.estimateUpperLimitFilePath(self.target, f, taskName, method)
-                    _h0 = rf.readEstimatedUpperStrainLimit(filePath)
-                    h0.append(_h0)
-                return np.mean(h0)
-        except:
-            print("No upper strain limit file, return h0 = 1e-25.")
-            return 1e-25
-        
     def getF0FromNonSatBands(self, nonSatBands, nInj):
         p = np.ones(nonSatBands.shape)
         p = p/p.sum() # Normalize to sum up to one
@@ -102,64 +79,34 @@ class injectionParams:
             eps = spacing[idx2]
             injf0 =  injData[i][idx1.capitalize()] # Weave use "Freq" not "freq" for injection's f0
             
-            f0_round = np.floor(injf0*10)/10
-            f0min, f0max, _ = fr.f0BroadRange(f0_round, self.fBand)
-            if (injf0-nSpacing*eps)<f0min:
-                data[i][idx1], data[i][idx2] = f0min, 2*nSpacing*eps
-            elif (injf0+nSpacing*eps)>f0max:
-                data[i][idx1], data[i][idx2] = f0max - 2*nSpacing*eps, 2*nSpacing*eps
-            else:
-                data[i][idx1], data[i][idx2] = injf0 - nSpacing*eps, 2*nSpacing*eps
+            data[i][idx1], data[i][idx2] = injf0 - nSpacing*eps, 2*nSpacing*eps
                 
             # f1dot
-            f1min, f1max, _ = fr.f1BroadRange(injf0, 0, self.target.tau)
             idx1, idx2 = freqParamName[1], freqDerivParamName[1]
             eps = spacing[idx2]
             injf1 =  injData[i][idx1] 
-            if (injf1 - nSpacing * eps) < f1min:
-                data[i][idx1], data[i][idx2] = f1min, 2*nSpacing*eps
-            elif (injf1 + nSpacing * eps) > f1max:
-                data[i][idx1], data[i][idx2] = f1max - 2*nSpacing*eps, 2*nSpacing*eps
-            else:
-                data[i][idx1], data[i][idx2] = injf1 - nSpacing*eps, 2*nSpacing*eps
-                
+            data[i][idx1], data[i][idx2] = injf1 - nSpacing*eps, 2*nSpacing*eps            
+   
             # f2dot
-            f2min, f2max, _ = fr.f2BroadRange(injf0, 0, injf1, injf1)
             idx1, idx2 = freqParamName[2], freqDerivParamName[2]
             eps = spacing[idx2]
             injf2 =  injData[i][idx1] 
-            if (injf2 - nSpacing*eps)<f2min:
-                data[i][idx1], data[i][idx2] = f2min, 2*nSpacing*eps
-            elif (injf2 + nSpacing*eps)>f2max:
-                data[i][idx1], data[i][idx2] = f2max - 2*nSpacing*eps, 2*nSpacing*eps
-            else:
-                data[i][idx1], data[i][idx2] = injf2 - nSpacing*eps, 2*nSpacing*eps
-                                        
+            data[i][idx1], data[i][idx2] = injf2 - nSpacing*eps, 2*nSpacing*eps            
+                           
             # f3dot
             if freqDerivOrder >= 3:
-                f3min, f3max, _ = fr.f3BroadRange(injf0, 0, injf1, injf1, injf2, injf2)
                 idx1, idx2 = freqParamName[2], freqDerivParamName[2]
                 eps = spacing[idx2]
                 injf3 =  injData[i][idx1] 
-                if (injf3 - nSpacing*eps)<f3min:
-                    data[i][idx1], data[i][idx2] = f3min, 2*nSpacing*eps
-                elif (injf3 + nSpacing*eps)>f3max:
-                    data[i][idx1], data[i][idx2] = f3max - 2*nSpacing*eps, 2*nSpacing*eps
-                else:
-                    data[i][idx1], data[i][idx2] = injf3 - nSpacing*eps, 2*nSpacing*eps
+                data[i][idx1], data[i][idx2] = injf3 - nSpacing*eps, 2*nSpacing*eps
 
             # f4dot
             if freqDerivOrder >= 4:
-                f4min, f4max, _ = fr.f4BroadRange(injf0, 0, injf1, injf1, injf2, injf2)
                 idx1, idx2 = freqParamName[2], freqDerivParamName[2]
                 eps = spacing[idx2]
                 injf4 =  injData[i][idx1] # Weave use "Freq" for injection
-                if (injf4 - nSpacing*eps)<f4min:
-                    data[i][idx1], data[i][idx2] = f4min, 2*nSpacing*eps
-                elif (injf4 + nSpacing*eps)>f4max:
-                    data[i][idx1], data[i][idx2] = f4max - 2*nSpacing*eps, 2*nSpacing*eps
-                else:
-                    data[i][idx1], data[i][idx2] = injf4 - nSpacing*eps, 2*nSpacing*eps
+                data[i][idx1], data[i][idx2] = injf4 - nSpacing*eps, 2*nSpacing*eps
+
         data = Table(data)
         data.add_column(self.target.alpha*np.ones(n), name='alpha')
         data.add_column(self.target.dalpha*np.ones(n), name='dalpha')
@@ -168,59 +115,6 @@ class injectionParams:
  
         return fits.BinTableHDU(data)
     
-    def saveh0Value(self, injDict, fmin=20, fmax=475, nInj=1, nAmp=8):
-        filePath = fp.h0_FilePath(self.target, fmin, fmax, stage='injectionUpperLimit')
-        freqList = [f for f in injDict.keys()]
-        injPerPoint = int(nInj/nAmp)
-        utils.makeDir([filePath])
-        with open(filePath, 'wt') as file:
-            file.write('#{0}'.format('freq'))
-            for i in range(nAmp):
-                file.write('\t{0}'.format(i))
-            file.write('\n')
-            
-            for freq in freqList:
-                file.write('{0}'.format(freq))
-                for i in range(nAmp):
-                    aplus = injDict[str(freq)].data[i*injPerPoint]['aPlus']
-                    across = injDict[str(freq)].data[i*injPerPoint]['aCross']
-                    h0 = 0.5*(2.*aplus+2.*np.sqrt(aplus**2-across**2) )
-                    file.write('\t{0}'.format(h0))
-                file.write('\n')
-        return 0
-
-    def genParam(self, freq, nBands=None, nInj=1, nAmp=1, injFreqDerivOrder=4, skyUncertainty=0, freqDerivOrder=2, stage='search', fmin=20, fmax=475, cluster=False, workInLocalDir=False):
-        if freqDerivOrder > 4:
-            print('Error: frequency derivative order larger than 4.')
-        if injFreqDerivOrder > 4:
-            print('Error: Injection frequency derivative order larger than 4.')
-            
-        searchParamDict, injParamDict = {}, {}
-        #nonSatBandsList = utils.loadNonSaturatedBand(self.target, fmin, fmax, nBands)    
-        #nonSatBands = nonSatBandsList[(nonSatBandsList>=freq)*(nonSatBandsList<(freq+1.0))]
-        
-        taskName = utils.taskName(self.target, stage, self.cohDay, freqDerivOrder, freq)
-        dataFilePath = fp.outlierFilePath(self.target, freq, taskName, stage, cluster=cluster)
-        if workInLocalDir:
-            dataFilePath = Path(dataFilePath).name
-        nonSatBands = fits.getdata(dataFilePath, 3)['nonSatBand']  
-
-        if nAmp != 1:
-            h0 = self.upperStrainLimit(freq, fmin, fmax, nBands, nonSatBands, method='ULEstimation')
-        else:
-            h0 = self.upperStrainLimit(freq, fmin, fmax, nBands, nonSatBands, method='Injection')
-        
-        ip = self.genInjParamTable(nonSatBands, h0, freq, nInj, nAmp, injFreqDerivOrder, skyUncertainty)
-        sp = self.genSearchRangeTable(dataFilePath, freq, ip.data, stage, freqDerivOrder)
-        
-        injParamDict[str(freq)] = ip
-        searchParamDict[str(freq)] = sp
-        if nAmp !=1:    
-            self.saveh0Value(injParamDict, fmin, fmax, nInj, nAmp)
-        
-        return searchParamDict, injParamDict        
-
-
     def _genParam(self, h0, freq, nBands=None, nInj=1, nAmp=1, injFreqDerivOrder=4, skyUncertainty=0, freqDerivOrder=2, stage='search', cluster=False, workInLocalDir=False):
         if freqDerivOrder > 4:
             print('Error: frequency derivative order larger than 4.')
@@ -228,26 +122,17 @@ class injectionParams:
             print('Error: Injection frequency derivative order larger than 4.')
             
         searchParamDict, injParamDict = {}, {}
-        #nonSatBandsList = utils.loadNonSaturatedBand(self.target, fmin, fmax, nBands)    
-        #nonSatBands = nonSatBandsList[(nonSatBandsList>=freq)*(nonSatBandsList<(freq+1.0))]
-        
+       
         taskName = utils.taskName(self.target, stage, self.cohDay, freqDerivOrder, freq)
         dataFilePath = fp.outlierFilePath(self.target, freq, taskName, stage, cluster=cluster)
         if workInLocalDir:
             dataFilePath = Path(dataFilePath).name
         nonSatBands = fits.getdata(dataFilePath, 3)['nonSatBand']  
 
-        #if nAmp != 1:
-        #    h0 = self.upperStrainLimit(freq, fmin, fmax, nBands, nonSatBands, method='ULEstimation')
-        #else:
-        #    h0 = self.upperStrainLimit(freq, fmin, fmax, nBands, nonSatBands, method='Injection')
-        
         ip = self.genInjParamTable(nonSatBands, h0, freq, nInj, nAmp, injFreqDerivOrder, skyUncertainty)
         sp = self.genSearchRangeTable(dataFilePath, freq, ip.data, stage, freqDerivOrder)
         
         injParamDict[str(freq)] = ip
         searchParamDict[str(freq)] = sp
-        #if nAmp !=1:    
-        #    self.saveh0Value(injParamDict, fmin, fmax, nInj, nAmp)
-        
+       
         return searchParamDict, injParamDict        

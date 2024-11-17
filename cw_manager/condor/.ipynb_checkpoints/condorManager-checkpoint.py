@@ -38,8 +38,10 @@ class condorManager:
             
             for key, value in kwargs.items():  
                 argList+="--{0}={1} ".format(key,value)
-            argList+="--alpha={0}/{1} ".format(params['alpha'], params['dalpha'])
-            argList+="--delta={0}/{1} ".format(params['delta'], params['ddelta'])
+            #argList+="--alpha={0}/{1} ".format(params['alpha'], params['dalpha'])
+            #argList+="--delta={0}/{1} ".format(params['delta'], params['ddelta'])
+            argList+="--alpha={0}/{1} ".format(params['alpha'], self.target.dalpha)
+            argList+="--delta={0}/{1} ".format(params['delta'], self.target.ddelta)
         
             for i in range(self.freqDerivOrder+1):
                 key1, key2 = self.freqParamName[i], self.freqDerivParamName[i]
@@ -56,8 +58,10 @@ class condorManager:
             
             for key, value in kwargs.items():
                 argList+="{0}=\"{1}\" ".format(key.replace('-', '').upper(),value)        
-            argList+="ALPHA=\"{0}\" DALPHA=\"{1}\" ".format(params['alpha'], params['dalpha'])
-            argList+="DELTA=\"{0}\" DDELTA=\"{1}\" ".format(params['delta'], params['ddelta'])
+            #argList+="ALPHA=\"{0}\" DALPHA=\"{1}\" ".format(params['alpha'], params['dalpha'])
+            #argList+="DELTA=\"{0}\" DDELTA=\"{1}\" ".format(params['delta'], params['ddelta'])
+            argList+="ALPHA=\"{0}\" DALPHA=\"{1}\" ".format(params['alpha'], self.target.dalpha)
+            argList+="DELTA=\"{0}\" DDELTA=\"{1}\" ".format(params['delta'], self.target.ddelta)
             for i in range(self.freqDerivOrder+1):
                 key1, key2 = self.freqParamName[i], self.freqDerivParamName[i]
                 argList+="{0}=\"{1}\" ".format(key1.upper(), params[key1])
@@ -234,7 +238,7 @@ class condorManager:
         
         #injParamName = injParamList[str(freq)].columns.names
         injParamName = self.injParamName
-        for jobIndex, (searchParam, injParam) in enumerate(zip(param, injParam, 1)):
+        for jobIndex, (searchParam, injParam) in enumerate(zip(param, injParam), 1):
             ######################## Argument string use to write to DAG  ########################
             if not OSG:
                 argList = self.weaveArgs(freq, searchParam, taskName, sftFiles, jobIndex, OSG)[:-1]

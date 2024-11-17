@@ -79,32 +79,67 @@ class injectionParams:
             eps = spacing[idx2]
             injf0 =  injData[i][idx1.capitalize()] # Weave use "Freq" not "freq" for injection's f0
             
-            data[i][idx1], data[i][idx2] = injf0 - nSpacing*eps, 2*nSpacing*eps
+            f0_round = np.floor(injf0*10)/10
+            f0min, f0max, _ = fr.f0BroadRange(f0_round, self.fBand)
+            if (injf0-nSpacing*eps)<f0min:
+                data[i][idx1], data[i][idx2] = f0min, 2*nSpacing*eps
+            elif (injf0+nSpacing*eps)>f0max:
+                data[i][idx1], data[i][idx2] = f0max - 2*nSpacing*eps, 2*nSpacing*eps
+            else:
+                data[i][idx1], data[i][idx2] = injf0 - nSpacing*eps, 2*nSpacing*eps
                 
             # f1dot
+            f1min, f1max, _ = fr.f1BroadRange(injf0, 0, self.target.tau)
             idx1, idx2 = freqParamName[1], freqDerivParamName[1]
             eps = spacing[idx2]
             injf1 =  injData[i][idx1] 
+            #if (injf1 - nSpacing * eps) < f1min:
+            #    data[i][idx1], data[i][idx2] = f1min, 2*nSpacing*eps
+            #elif (injf1 + nSpacing * eps) > f1max:
+            #    data[i][idx1], data[i][idx2] = f1max - 2*nSpacing*eps, 2*nSpacing*eps
+            #else:
+            #    data[i][idx1], data[i][idx2] = injf1 - nSpacing*eps, 2*nSpacing*eps
             data[i][idx1], data[i][idx2] = injf1 - nSpacing*eps, 2*nSpacing*eps            
    
             # f2dot
+            f2min, f2max, _ = fr.f2BroadRange(injf0, 0, injf1, injf1)
             idx1, idx2 = freqParamName[2], freqDerivParamName[2]
             eps = spacing[idx2]
             injf2 =  injData[i][idx1] 
+            #if (injf2 - nSpacing*eps)<f2min:
+            #    data[i][idx1], data[i][idx2] = f2min, 2*nSpacing*eps
+            #elif (injf2 + nSpacing*eps)>f2max:
+            #    data[i][idx1], data[i][idx2] = f2max - 2*nSpacing*eps, 2*nSpacing*eps
+            #else:
+            #    data[i][idx1], data[i][idx2] = injf2 - nSpacing*eps, 2*nSpacing*eps
             data[i][idx1], data[i][idx2] = injf2 - nSpacing*eps, 2*nSpacing*eps            
                            
             # f3dot
             if freqDerivOrder >= 3:
+                f3min, f3max, _ = fr.f3BroadRange(injf0, 0, injf1, injf1, injf2, injf2)
                 idx1, idx2 = freqParamName[2], freqDerivParamName[2]
                 eps = spacing[idx2]
                 injf3 =  injData[i][idx1] 
+                #if (injf3 - nSpacing*eps)<f3min:
+                #    data[i][idx1], data[i][idx2] = f3min, 2*nSpacing*eps
+                #elif (injf3 + nSpacing*eps)>f3max:
+                #    data[i][idx1], data[i][idx2] = f3max - 2*nSpacing*eps, 2*nSpacing*eps
+                #else:
+                #    data[i][idx1], data[i][idx2] = injf3 - nSpacing*eps, 2*nSpacing*eps
                 data[i][idx1], data[i][idx2] = injf3 - nSpacing*eps, 2*nSpacing*eps
 
             # f4dot
             if freqDerivOrder >= 4:
+                f4min, f4max, _ = fr.f4BroadRange(injf0, 0, injf1, injf1, injf2, injf2)
                 idx1, idx2 = freqParamName[2], freqDerivParamName[2]
                 eps = spacing[idx2]
                 injf4 =  injData[i][idx1] # Weave use "Freq" for injection
+                #if (injf4 - nSpacing*eps)<f4min:
+                #    data[i][idx1], data[i][idx2] = f4min, 2*nSpacing*eps
+                #elif (injf4 + nSpacing*eps)>f4max:
+                #    data[i][idx1], data[i][idx2] = f4max - 2*nSpacing*eps, 2*nSpacing*eps
+                #else:
+                #    data[i][idx1], data[i][idx2] = injf4 - nSpacing*eps, 2*nSpacing*eps
                 data[i][idx1], data[i][idx2] = injf4 - nSpacing*eps, 2*nSpacing*eps
 
         data = Table(data)

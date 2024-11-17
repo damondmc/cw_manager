@@ -90,11 +90,11 @@ class resultManager():
         mean2F_th = tools.mean2F_threshold(sum(nTemp), self.nSeg)            
         return mean2F_th
 
-    def makeOutlierTable(self, data, spacing, mean2F_th, toplistLimit=1000, freqDerivOrder=2):    
+    def makeOutlierTable(self, dataFilePath, mean2F_th, toplistLimit=1000, freqDerivOrder=2):    
         """
         Parameters:
-        - data: table
-            BinHDUTable containing data on mean 2F values. The function reads this file to retrieve data on outliers.
+        - dataFilePath: str
+            Path to the FITS file containing data on mean 2F values. The function reads this file to retrieve data on outliers.
 
         - mean2F_th: float
             The threshold value for the mean 2F statistic, which filters outliers by including only those above this threshold.
@@ -107,14 +107,14 @@ class resultManager():
         """
         
         # Read and limit the data to the top entries
-        data = data[:toplistLimit]
+        data = fits.getdata(dataFilePath, 1)[:toplistLimit]
         # Mask data with mean 2F values greater than the threshold
         mask = data['mean2F'] > mean2F_th
         data = Table(data[mask])       
         data.add_column(mean2F_th*np.ones(len(data)), name='mean2F threshold')
     
         # Get frequency spacing based on the frequency derivative order   
-        #spacing = utils.getSpacing(dataFilePath, freqDerivOrder)
+        spacing = utils.getSpacing(dataFilePath, freqDerivOrder)
         _, name = utils.phaseParamName(freqDerivOrder)
         #print(spacing) 
         # Add spacing parameters as columns in the table
@@ -123,34 +123,35 @@ class resultManager():
         return data
 
     # Generates a table of injection data from a FITS file and matches it with search results
-    def makeInjectionTable(self, injParam, searchParam, freqDerivOrder):   
+    def makeInjectionTable(self, dataFilePath, sr, freqDerivOrder):   
         """
         Parameters:
-        - injParam: Table
-            BinHDUTable containing injection data. The function reads the injection data from this file to analyze and compare it with search results.
+        - dataFilePath: str
+            Path to the FITS file containing injection data. The function reads the injection data from this file to analyze and compare it with search results.
 
-        - searchParam: Table
+        - sr: Table
             A table of search results that is used to find matching entries for each injection.
 
         - freqDerivOrder: int
             The order of frequency derivative to consider (e.g., 1 for first derivative, 2 for second derivative).
             This parameter is used to determine which frequency derivative columns (like df1, df2) are extracted and matched to the injection data.
         """
-        injParam = Table(injParam)   
+        inj = fits.getdata(dataFilePath, 2)
+        inj = Table(inj)   
         
         # Calculate h0 from aPlus and aCross, adding it as a new column
-        aplus, across = injParam['aPlus'], injParam['aCross']
+        aplus, across = inj['aPlus'], inj['aCross']
         h0 = 0.5*(2.*aplus+2.*np.sqrt(aplus**2-across**2) )
-        injParam.add_column(h0*np.ones(len(injParam)), name='h0')
+        inj.add_column(h0*np.ones(len(inj)), name='h0')
         
         # Rename the reference time column for consistency
-        injParam.rename_column('refTime_s', 'refTime')   
+        inj.rename_column('refTime_s', 'refTime')   
         
         # Get names for the frequency derivative parameters based on the order
         fn, dfn = utils.phaseParamName(freqDerivOrder)
           
         # Mask for identifying injections that match within a specific frequency range
-        mask = np.full(searchParam['freq'].shape, True)
+        mask = np.full(sr['freq'].shape, True)
         #mask *= ( (sr['freq']-setup.followUp_nSpacing*sr['df']) < inj['Freq'] )
         #mask *= ( (sr['freq']+setup.followUp_nSpacing*sr['df']) > inj['Freq'] )
         #print(len(mask)) 
@@ -167,12 +168,12 @@ class resultManager():
         #    print(sr[mask]['df3dot'][0])
         #except:
         #    x=1
-        searchParam = Table(searchParam[mask])[:1] # only follow up the loudest one which covering the injection to save the cost 
+        sr = Table(sr[mask])[:1] # only follow up the loudest one which covering the injection to save the cost 
         #print(sr['f3dot'])
         #_inj = inj.copy()
         #if len(sr) !=0:
         #    inj = vstack([inj for _ in range(len(sr))])
-        return searchParam, injParam
+        return sr, inj
     
     # Write results from each 1Hz frequency band of the search stage output
     def _writeSearchResult(self, freq, mean2F_th, nJobs, numTopListLimit=1000, stage='search', freqDerivOrder=2, cluster=False, workInLocalDir=False):
@@ -217,10 +218,8 @@ class resultManager():
             if workInLocalDir:
                 weaveFilePath = Path(weaveFilePath).name
                 
-            weave_data = fits.getdata(weaveFilePath, 1)
-            spacing = utils.getSpacing(weaveFilePath, freqDerivOrder)
             # Generate outlier table for the job and assess if it reached the limit
-            _outlier = self.makeOutlierTable(weave_data, spacing, mean2F_th, numTopListLimit, freqDerivOrder)  
+            _outlier = self.makeOutlierTable(weaveFilePath, mean2F_th, numTopListLimit, freqDerivOrder)  
 
             if len(_outlier) == numTopListLimit:
                 info_data[i] = freq, jobIndex, 0, 1  # Job saturated if top limit is reached
@@ -238,6 +237,12 @@ class resultManager():
         primary_hdu = fits.PrimaryHDU()
         primary_hdu.header['HIERARCH mean2F_th'] = mean2F_th
         primary_hdu.header['HIERARCH cluster_nSpacing'] = ''
+        
+        # Add spacing information to the FITS header for grid parameters (df, df1dot, etc.)
+        #spacing = utils.getSpacing(weaveFilePath, freqDerivOrder)
+        #_, name = utils.phaseParamName(freqDerivOrder)
+        #for i in range(len(name)):
+        #    primary_hdu.header['HIERARCH '+ name[i]] = spacing[name[i]]
 
         # Create table HDUs for outliers, job information, and non-saturated bands
         outlier_hdu =  fits.BinTableHDU(data=vstack(outlierTableList), name=stage+'_outlier')
@@ -391,23 +396,19 @@ class resultManager():
         weaveFilePath = fp.weaveOutputFilePath(self.target, freq, taskName, 1, stage)
         if workInLocalDir:
                 weaveFilePath = Path(weaveFilePath).name
-                
+        #spacing = utils.getSpacing(weaveFilePath, freqDerivOrder)
         for i, jobIndex in enumerate(range(1, nJobs+1)):
             weaveFilePath = fp.weaveOutputFilePath(self.target, freq, taskName, jobIndex, stage)
             if workInLocalDir:
                 weaveFilePath = Path(weaveFilePath).name
-            
-            weave_data = fits.getdata(weaveFilePath, 1)
-            spacing = utils.getSpacing(weaveFilePath, freqDerivOrder)
-            _outlier = self.makeOutlierTable(weave_data, spacing, mean2F_th, numTopListLimit, freqDerivOrder)  
-            injParam = fits.getdata(weaveFilePath, 2)
-            _outlier, injParam = self.makeInjectionTable(injParam, _outlier, freqDerivOrder)
+            _outlier = self.makeOutlierTable(weaveFilePath, mean2F_th, numTopListLimit, freqDerivOrder)  
+            _outlier, _inj = self.makeInjectionTable(weaveFilePath, _outlier, freqDerivOrder)
             
             if len(_outlier) == 0:
                 outlierTableList.append( _outlier )
             else:
                 outlierTableList.append( _outlier )
-                injTableList.append( injParam )
+                injTableList.append( _inj )
             info_data[i] = freq, jobIndex, len(_outlier)  
 
         # append all tables in the file into one
@@ -600,13 +601,10 @@ class resultManager():
             if workInLocalDir:
                 weaveFilePath = Path(weaveFilePath).name 
             # Create outlier table from the weave output
-            weave_data = fits.getdata(weaveFilePath, 1)
-            spacing = utils.getSpacing(weaveFilePath, freqDerivOrder)
-            _outlier = self.makeOutlierTable(weave_data, spacing, mean2F_th[i], numTopListLimit, freqDerivOrder)
+            _outlier = self.makeOutlierTable(weaveFilePath, mean2F_th[i], numTopListLimit, freqDerivOrder)
             # If injections are considered, create an injection table as well
             if inj:
-                injParam = fits.getdata(weaveFilePath, 2)
-                _outlier, injParam = self.makeInjectionTable(weave_data, _outlier, freqDerivOrder)
+                _outlier, _inj = self.makeInjectionTable(weaveFilePath, _outlier, freqDerivOrder)
                 
             # Append results to the respective lists
             if len(_outlier) == 0:
@@ -614,7 +612,7 @@ class resultManager():
             else:
                 outlierTableList.append( _outlier )
                 if inj:
-                    injTableList.append( injParam )
+                    injTableList.append( _inj )
                     
             info_data[i] = freq, jobIndex, len(_outlier)  
 
@@ -821,13 +819,10 @@ class resultManager():
             if workInLocalDir:
                 weaveFilePath = Path(weaveFilePath).name 
             # Create outlier table from the weave output
-            weave_data = fits.getdata(weaveFilePath, 1)
-            spacing = utils.getSpacing(weaveFilePath, freqDerivOrder)
-            _outlier = self.makeOutlierTable(weave_data, spacing, mean2F_th[i], numTopListLimit, freqDerivOrder)
+            _outlier = self.makeOutlierTable(weaveFilePath, mean2F_th[i], numTopListLimit, freqDerivOrder)
             # If injections are considered, create an injection table as well
             if inj:
-                injParam = fits.getdata(weaveFilePath, 2)
-                _outlier, injParam = self.makeInjectionTable(injParam, _outlier, freqDerivOrder)
+                _outlier, _inj = self.makeInjectionTable(weaveFilePath, _outlier, freqDerivOrder)
                 
             # Append results to the respective lists
             if len(_outlier) == 0:
@@ -835,7 +830,7 @@ class resultManager():
             else:
                 outlierTableList.append( _outlier )
                 if inj:
-                    injTableList.append( injParam )
+                    injTableList.append( _inj )
                     
             info_data[i] = freq, jobIndex, len(_outlier)  
 

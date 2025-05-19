@@ -58,12 +58,12 @@ class fitSigmoid:
         x = self.rescale_h0(h0_arr, h0_list)
         p_inter = self.sigmoid(x, *self.popt)
         h0, err = self.h0_fromPercentile(per=p_inter)
-        ax.plot(h0_arr, p_inter, color=colors[0], label='fit')
-        ax.errorbar(h0_arr, p_inter, xerr=h0*err, fmt='', color=colors[0], ls='none')
+        ax.plot(h0_arr, p_inter, color=colors[0], label='fit', zorder=1)
+        ax.errorbar(h0_arr, p_inter, xerr=h0*err, fmt='', color=colors[0], ls='none', zorder=1)
                  
-        ax.scatter(h0_list, p, color='black')
+        #ax.scatter(h0_list, p, color='black', zorder=3)
         err = self.binomialError(p, self.injPerPoint)
-        ax.errorbar(h0_list, p, yerr=err, fmt='', label='data', color='k', ls='none')
+        ax.errorbar(h0_list, p, yerr=err, fmt='o', label='data', color='k', ls='none', zorder=2)
                
         h95, dx = self.h0_fromPercentile(per=0.95)
         p95 = 0.95
@@ -72,11 +72,11 @@ class fitSigmoid:
 
         plt.plot(x_highlighting, y_highlighting, color='r', label=r'$h_{95}=$'+'{:.3e}'.format(h95)+r'$\pm$'+'{:.2f}%'.format(dx*100))
 
-        ax.legend()
+        ax.legend(fontsize=14)
         ax.set_ylim(-0.05, 1.05)
         ax.set_xlim(0.9*min(min(h0_list), h0_arr[0]), 1.05*max(max(h0_list), h0_arr[-1]))       
-        ax.set_xlabel(r'$h_0$')
-        ax.set_ylabel(r'$p_{\mathrm{det}}$')
+        ax.set_xlabel(r'$h_0$',fontsize=14)
+        ax.set_ylabel(r'$p_{\mathrm{det}}$',fontsize=14)
         
         if savePath is not None:
             fig.savefig(savePath)

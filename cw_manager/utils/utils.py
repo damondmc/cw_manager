@@ -4,6 +4,23 @@ from . import setup_parameter as setup
 from pathlib import Path
 from . import filePath as fp
 from astropy.io import fits
+from astropy.coordinates import SkyCoord
+import astropy.units as u
+
+def j2000_to_radian(ra, dec):
+    """
+    Convert J2000 Right Ascension (RA) and Declination (DEC) to radians.
+    
+    Parameters:
+    - ra (str or float): Right Ascension in degrees or as a string (HH:MM:SS)
+    - dec (str or float): Declination in degrees or as a string (DD:MM:SS)
+    
+    Returns:
+    - tuple: (RA in radians, DEC in radians)
+    """
+    coord = SkyCoord(ra=ra, dec=dec, unit=(u.hourangle, u.deg), frame='icrs')
+    return coord.ra.radian, coord.dec.radian
+
 
 # Clusters outliers based on spatial proximity in phase parameter space, guided by loudness
 def clustering(data, freqDerivOrder):
@@ -42,7 +59,7 @@ def clustering(data, freqDerivOrder):
 
     # Loop over sorted samples (from loudest to least loud)
     for i, (center, gridsize) in enumerate(zip(sorted_coords, sorted_spacing)):
-        if i in processed_indices:
+        if sorted_indices[i] in processed_indices:
             continue  # Skip already processed samples
 
         # Initialize list for dimension-wise indices
@@ -51,7 +68,7 @@ def clustering(data, freqDerivOrder):
         # Compute distances in each dimension separately and find indices within radius r0
         for dim in range(freqDerivOrder+1):
             r0 = setup.cluster_nSpacing * gridsize[dim]
-            distances_dim = np.abs(sorted_coords[:, dim] - center[dim])
+            distances_dim = np.abs(_data[:, dim] - center[dim])
             within_dim = np.where(distances_dim <= r0)[0]
             within_dim_indices.append(within_dim)
 

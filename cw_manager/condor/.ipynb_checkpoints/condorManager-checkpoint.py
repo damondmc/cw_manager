@@ -5,6 +5,7 @@ from ..utils import filePath as fp
 from ..utils import setup_parameter as setup
 from ..utils import utils as utils
 from tqdm import tqdm
+import time
 
 class condorManager:
     def __init__(self, target, obsDay):
@@ -111,6 +112,7 @@ class condorManager:
 ###### main use function
 
     def makeSearchDag(self, cohDay, freq, param, numTopList, stage, freqDerivOrder, OSG=False, OSDF=False):
+        t0 = time.time()
         if OSDF and not OSG:
             print('Are you sure you want to read SFTs from OSDF but not using OSG computing resources?')
         self.freqParamName, self.freqDerivParamName = utils.phaseParamName(freqDerivOrder)
@@ -140,6 +142,7 @@ class condorManager:
             wc.writeSearchDag(dagFileName, taskName, subFileName, jobIndex, argList)
 
         print('Finish writing {0} dag files for {1} Hz'.format(self.stage, freq))
+        print('Time used = {}s'.format(time.time()-t0))
         return dagFileName
 
 

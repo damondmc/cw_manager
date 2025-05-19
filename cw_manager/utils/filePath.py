@@ -47,7 +47,6 @@ def sftFilePath(obsDay, freq, detector='H1', OSDF=False):
     elif detector == 'L1':
         filePath = rootDir+'SFTs/narrowBand/{0}days/L1/{1}/'.format(obsDay, int(freq))
         #filePath = rootDir+'SFTs/narrowBand_extend/{0}days/L1/{1}/'.format(obsDay, int(freq)) # for SN1987A
-#    print(filePath)
     return filePath
 
 
@@ -64,7 +63,6 @@ def _sftFilePath(obsDay, freq, detector='H1', OSDF=False):
     elif detector == 'L1':
         filePath = rootDir+'SFTs/narrowBand_age300yr/{0}days/L1/{1}/'.format(obsDay, int(freq))
         #filePath = rootDir+'SFTs/narrowBand_extend/{0}days/L1/{1}/'.format(obsDay, int(freq)) # for SN1987A
-#    print(filePath)
     return filePath
 
 def estimateUpperLimitExcutable():
@@ -119,6 +117,13 @@ def outlierFilePath(target, freq, taskName, stage, cluster=False):
     else:
          filePath = setup.homeDir + 'results/{0}/{1}/{2}/{3}/Outliers/{4}_outlier_clustered.fts'.format(stage, target.name, setup.sftSource, freq, taskName)
     return filePath
+
+# file to save the outlier after analyzing the weave result file
+def outlierFromSaturatedFilePath(target, freq, taskName, stage):
+    filePath = setup.homeDir + 'results/{0}/{1}/{2}/{3}/Outliers/{4}_LoudestOutlierFromSaturated.fts'.format(stage, target.name, setup.sftSource, freq, taskName)
+    return filePath
+
+
 
 ############################################ Estimate upper limit output file
 def estimateUpperLimitFilePath(target, freq, taskName, stage):
@@ -221,5 +226,5 @@ def imageFilePath(OSDF=False):
         filePath = 'osdf:///igwn/cit/staging/hoitim.cheung/images/'
     else:
         filePath = '/home/hoitim.cheung/cw_manager_package/'
-    filePath += 'cw_manager_followup_v12.sif'
+    filePath += 'cw_manager_sn1987.sif'
     return filePath

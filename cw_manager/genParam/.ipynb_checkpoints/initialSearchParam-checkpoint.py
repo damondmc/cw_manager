@@ -1,6 +1,6 @@
 #Author - Damon Cheung
-import utils.utils as utils
-import genParam.frequencyRange as fr
+from ..utils import utils as utils
+from . import frequencyRange as fr
 from tqdm import tqdm
 import numpy as np
 from astropy.io import fits
@@ -35,7 +35,7 @@ class initSearchParams:
                     f2Band = _f2Band/nf2dots
                     f2min = _f2min + k*f2Band
                     f2max = f2min + f2Band
-                    if k == 0:
+                    if j == (nf1dots-1) and k == 0:
                         f2min = 0.0
                         f2Band = f2max    # to mannually set f2dot lower limit to 0 (numerical accuracy/error exits)
                     

@@ -59,7 +59,7 @@ def clustering(data, freqDerivOrder):
 
     # Loop over sorted samples (from loudest to least loud)
     for i, (center, gridsize) in enumerate(zip(sorted_coords, sorted_spacing)):
-        if sorted_indices[i] in processed_indices:
+        if i in processed_indices:
             continue  # Skip already processed samples
 
         # Initialize list for dimension-wise indices
@@ -68,7 +68,7 @@ def clustering(data, freqDerivOrder):
         # Compute distances in each dimension separately and find indices within radius r0
         for dim in range(freqDerivOrder+1):
             r0 = setup.cluster_nSpacing * gridsize[dim]
-            distances_dim = np.abs(_data[:, dim] - center[dim])
+            distances_dim = np.abs(sorted_coords[:, dim] - center[dim])
             within_dim = np.where(distances_dim <= r0)[0]
             within_dim_indices.append(within_dim)
 

@@ -36,33 +36,15 @@ def analyzeResultExecutableFilePath():
 # sft files
 def sftFilePath(obsDay, freq, detector='H1', OSDF=False):
     if OSDF:
-        rootDir = setup.OSDFDir 
+        rootDir = setup.OSDFDir + '/SFTs/o4a_data/'
     else:
         #rootDir = setup.homeDir
-        rootDir = '/home/'+setup.user+'/snrsearch/o4/'
-        
-    if detector == 'H1':
-        filePath = rootDir+'SFTs/narrowBand/{0}days/H1/{1}/'.format(obsDay, int(freq))
-        #filePath = rootDir+'SFTs/narrowBand_extend/{0}days/H1/{1}/'.format(obsDay, int(freq)) # for SN1987A
-    elif detector == 'L1':
-        filePath = rootDir+'SFTs/narrowBand/{0}days/L1/{1}/'.format(obsDay, int(freq))
-        #filePath = rootDir+'SFTs/narrowBand_extend/{0}days/L1/{1}/'.format(obsDay, int(freq)) # for SN1987A
-    return filePath
-
-
-def _sftFilePath(obsDay, freq, detector='H1', OSDF=False):
-    if OSDF:
-        rootDir = setup.OSDFDir 
-    else:
-        #rootDir = setup.homeDir
-        rootDir = '/home/'+setup.user+'/o4_data/'
+        rootDir = '/home/'+setup.user+'/SFTs/o4a_data/'
         
     if detector == 'H1':
         filePath = rootDir+'SFTs/narrowBand_age300yr/{0}days/H1/{1}/'.format(obsDay, int(freq))
-        #filePath = rootDir+'SFTs/narrowBand_extend/{0}days/H1/{1}/'.format(obsDay, int(freq)) # for SN1987A
     elif detector == 'L1':
         filePath = rootDir+'SFTs/narrowBand_age300yr/{0}days/L1/{1}/'.format(obsDay, int(freq))
-        #filePath = rootDir+'SFTs/narrowBand_extend/{0}days/L1/{1}/'.format(obsDay, int(freq)) # for SN1987A
     return filePath
 
 def estimateUpperLimitExcutable():
@@ -216,15 +198,10 @@ def sensitivityFilePath(targetList, fmin, fmax, nBands=None, stage='injectionUpp
         filePath = setup.homeDir + 'results/{0}/sensitivity{1}_{2}-{3}Hz.txt'.format(stage, name, fmin, fmax)
     return filePath
 
-# file to save the ratio in crease in mean2F for follow-up stage obtained in injection test
-def shellResubmitFilePath():
-    filePath = setup.homeDir + 'resubmitDAG.sh'.format()
-    return filePath
-
 def imageFilePath(OSDF=False):
     if OSDF:    
         filePath = 'osdf:///igwn/cit/staging/hoitim.cheung/images/'
     else:
-        filePath = '/home/hoitim.cheung/cw_manager_package/'
-    filePath += 'cw_manager_sn1987.sif'
+        filePath = '/home/hoitim.cheung/gc/cw_manager/'
+    filePath += 'cw_manager_gc.sif'
     return filePath

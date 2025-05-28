@@ -6,3 +6,4 @@ dalpha = 0 # in radian
 ddelta = 0 # in radian 
 rc = 1.454441043328608e-05 # core radius in radian 
 rh = 0.00035197473248552315 # half-light radius in radian 
+rt = 7.423284870647061e-05 # tidal radius in radian 

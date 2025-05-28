@@ -27,7 +27,7 @@ def searchJob(params, sftFiles, metric, semiMM, cohMM, numTopList, extraStats, r
     
     resultFile, param = params
     utils.makeDir([resultFile])
-    #print(resultFile)
+    print(resultFile)
     if Path(resultFile).exists():
         print('Exists:{}'.format(resultFile))
         return resultFile
@@ -46,8 +46,8 @@ def searchJob(params, sftFiles, metric, semiMM, cohMM, numTopList, extraStats, r
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
 
     # Print the standard output and errors for debugging
-    print(result.stdout)
-    print(result.stderr)
+    #print(result.stdout)
+    #print(result.stderr)
     return resultFile
 
 
@@ -81,7 +81,7 @@ def injectionJob(params, inj, sftFiles, metric, semiMM, cohMM, numTopList, extra
     inj['f3dot'], inj['f4dot'])
     
     command += injection_command
-    #print(command)
+    print(command)
     # Run the command
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
 
@@ -90,17 +90,17 @@ def injectionJob(params, inj, sftFiles, metric, semiMM, cohMM, numTopList, extra
     print(result.stderr)
     return resultFile
 
-def determineEfficiency(sftFiles, setup, cohDay, obsDay, im, rm, h0est, target, taskName, freq, nInj, freqDerivOrder, stage, numTopList, extraStats, num_cpus, cluster, workInLocalDir, saveIntermediate=False, skyUncertainty=1e-5):
+def determineEfficiency(sftFiles, setup, cohDay, obsDay, sp, inj_params, rm, target, taskName, freq, nInj, freqDerivOrder, stage, numTopList, extraStats, num_cpus, cluster, workInLocalDir, saveIntermediate=False, skyUncertainty=1e-5):
     
-    sp, ip = im._genParam(h0=h0est, freq=freq, nInj=nInj, injFreqDerivOrder=4, freqDerivOrder=freqDerivOrder, skyUncertainty=skyUncertainty, workInLocalDir=workInLocalDir, cluster=cluster)
+    #sp, ip = im._genParam(h0=h0est, freq=freq, nInj=nInj, injFreqDerivOrder=4, freqDerivOrder=freqDerivOrder, skyUncertainty=skyUncertainty, workInLocalDir=workInLocalDir, cluster=cluster)
 
     if workInLocalDir:
         search_params = [(Path(fp.weaveOutputFilePath(target, freq, taskName, jobIndex, stage)).name, params) for jobIndex, params in enumerate(sp[str(freq)].data, 1)]
     else:
         search_params = [(fp.weaveOutputFilePath(target, freq, taskName, jobIndex, stage), params) for jobIndex, params in enumerate(sp[str(freq)].data, 1)]
-    inj_params = ip[str(freq)].data
+    #inj_params = ip[str(freq)].data
 
-    print("Generated params for h0={}, running Weave...".format(h0est)) 
+    #print("Generated params for h0={}, running Weave...".format(h0est)) 
     injResultFileList = [] 
     
     _, cohTime, nSeg, _, _ = utils.getTimeSetup(target.name, obsDay, cohDay)

@@ -4,23 +4,6 @@ from . import setup_parameter as setup
 from pathlib import Path
 from . import filePath as fp
 from astropy.io import fits
-from astropy.coordinates import SkyCoord
-import astropy.units as u
-
-def j2000_to_radian(ra, dec):
-    """
-    Convert J2000 Right Ascension (RA) and Declination (DEC) to radians.
-    
-    Parameters:
-    - ra (str or float): Right Ascension in degrees or as a string (HH:MM:SS)
-    - dec (str or float): Declination in degrees or as a string (DD:MM:SS)
-    
-    Returns:
-    - tuple: (RA in radians, DEC in radians)
-    """
-    coord = SkyCoord(ra=ra, dec=dec, unit=(u.hourangle, u.deg), frame='icrs')
-    return coord.ra.radian, coord.dec.radian
-
 
 # Clusters outliers based on spatial proximity in phase parameter space, guided by loudness
 def clustering(data, freqDerivOrder):

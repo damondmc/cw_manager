@@ -37,6 +37,7 @@ class injectionParams:
             injData[i]["Delta"] = np.arcsin(sinDelta)
             injData[i]["refTime"] = self.refTime
             cosi = np.random.uniform(-1,1)
+            
             _h0 = utils.genh0Points(i, h0, nInj, nAmp) 
             injData[i]["aPlus"] = _h0*(1.+cosi**2)/2.
             injData[i]["aCross"] = _h0*cosi

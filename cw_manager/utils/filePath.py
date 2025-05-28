@@ -105,98 +105,19 @@ def outlierFromSaturatedFilePath(target, freq, taskName, stage):
     filePath = setup.homeDir + 'results/{0}/{1}/{2}/{3}/Outliers/{4}_LoudestOutlierFromSaturated.fts'.format(stage, target.name, setup.sftSource, freq, taskName)
     return filePath
 
-
-
 ############################################ Estimate upper limit output file
 def estimateUpperLimitFilePath(target, freq, taskName, stage):
     filePath = setup.homeDir + 'results/{0}/{1}/{2}_{3}Hz.txt'.format(stage, target.name, taskName, freq)
     return filePath
-    
 
 ############################################ Info & summary file 
-
-# file to save mean2F threshold for outlier selection
-def threshFilePath(target, fmin, fmax, stage):
-    filePath = setup.homeDir + 'results/{0}/{1}/mean2F_Threshold_{2}-{3}Hz.txt'.format(stage, target.name, fmin, fmax)
-    return filePath
-
 # file to save the the meta info of outlier after analyzing the weave result file (no. of outlier per sub-band)
 def outlierInfoFilePath(target, freq, taskName, stage, cluster=False):
     if not cluster:
         filePath = setup.homeDir + 'results/{0}/{1}/{2}/{3}/Outliers/{4}_info.txt'.format(stage, target.name, setup.sftSource, freq, taskName)
     else:
-        filePath = setup.homeDir + 'results/{0}/{1}/{2}/{3}/Outliers/{4}_clustered_info.txt'.format(stage, target.name, setup.sftSource, freq, taskName)        
+        filePath = setup.homeDir + 'results/{0}/{1}/{2}/{3}/Outliers/{4}_clustered_info.txt'.format(stage, target.name, setup.sftSource, freq, taskName)      
     return filePath 
-
-# file that contains the summary of search result (no. of outlier and saturated bands)
-def infoSummaryFilePath(target, fmin, fmax, stage):
-    filePath = setup.homeDir + 'results/{0}/{1}/infoSummary_{2}-{3}Hz.txt'.format(stage, target.name, fmin, fmax)
-    return filePath
-
-# file to save the template counts for each freq band
-def templateCountFilePath(target, fmin, fmax, stage):
-    filePath = setup.homeDir + 'results/{0}/{1}/templateCounts_{2}-{3}Hz.txt'.format(stage, target.name, fmin, fmax)
-    return filePath
-
-# file to save the CPU runtime for each freq band
-def jobStatFilePath(target, fmin, fmax, stage):
-    filePath = setup.homeDir + 'results/{0}/{1}/jobStat_{2}-{3}Hz.txt'.format(stage, target.name, fmin, fmax)
-    return filePath
-
-# file to save the non-saturated bands 
-def nonSaturatedBandFilePath(target, fmin, fmax, nBands=None, stage='search'):
-    if nBands is not None:
-        filePath = setup.homeDir + 'results/{0}/{1}/nonSaturatedBand_{2}-{3}Hz_Random{4}Bands.txt'.format(stage, target.name, fmin, fmax, nBand)
-    else:
-        filePath = setup.homeDir + 'results/{0}/{1}/nonSaturatedBand_{2}-{3}Hz.txt'.format(stage, target.name, fmin, fmax)
-    return filePath
-
-# file to save the saturated bands 
-def saturatedBandFilePath(target, fmin, fmax, nBands=None, stage='search'):
-    if nBands is not None:
-        filePath = setup.homeDir + 'results/{0}/{1}/saturatedBand_{2}-{3}Hz_Random{4}Bands.txt'.format(stage, target.name, fmin, fmax, nBand)
-    else:
-        filePath = setup.homeDir + 'results/{0}/{1}/saturatedBand_{2}-{3}Hz.txt'.format(stage, target.name, fmin, fmax)
-    return filePath
-
-# file to save the h0 values used in injection-upper limit test
-def h0_nonSaturatedBandFilePath(target, fmin, fmax, nBands=None, stage='injectionUpperLimit'):
-    if nBands is not None:
-        filePath = setup.homeDir + 'results/{0}/{1}/h0_nonSaturatedBand_{2}-{3}Hz_Random{4}Bands.txt'.format(stage, target.name, fmin, fmax, nBands)
-    else:
-        filePath = setup.homeDir + 'results/{0}/{1}/h0_nonSaturatedBand_{2}-{3}Hz.txt'.format(stage, target.name, fmin, fmax)
-    return filePath
-
-# file to save the h0 values used in injection-upper limit test
-def h0_FilePath(target, fmin, fmax, stage='injectionUpperLimit'):
-    filePath = setup.homeDir + 'results/{0}/{1}/h0_{2}-{3}Hz.txt'.format(stage, target.name, fmin, fmax)
-    return filePath
-
-# file to save the efficiency (p values) obtained in injection-upper limit test
-def efficiency_nonSaturatedBandFilePath(target, fmin, fmax, nBands=None, stage='injectionUpperLimit'):
-    if nBands is not None:
-        filePath = setup.homeDir + 'results/{0}/{1}/efficiency_nonSaturatedBand_{2}-{3}Hz_Random{4}Bands.txt'.format(stage, target.name, fmin, fmax, nBands)
-    else:
-        filePath = setup.homeDir + 'results/{0}/{1}/efficiency_nonSaturatedBand_{2}-{3}Hz.txt'.format(stage, target.name, fmin, fmax)
-    return filePath
-
-# file to save the efficiency (p values) obtained in injection-upper limit test
-def efficiencyIn1HzFilePath(target, fmin, fmax, stage='injectionUpperLimit'):
-    filePath = setup.homeDir + 'results/{0}/{1}/efficiencyIn1Hz_{2}-{3}Hz.txt'.format(stage, target.name, fmin, fmax)
-    return filePath
-
-# file to save the summary of sensitivity (UpperStrainLimit)
-def sensitivityFilePath(targetList, fmin, fmax, nBands=None, stage='injectionUpperLimit'):
-    try:
-        name = targetList.name # one target 
-    except:
-        name = ''.join('_' + target.name for target in targetList) # multiple target 
-    
-    if nBands is not None:
-        filePath = setup.homeDir + 'results/{0}/sensitivity{1}_{2}-{3}Hz_Random{4}Bands.txt'.format(stage, name, fmin, fmax, nBands)
-    else:
-        filePath = setup.homeDir + 'results/{0}/sensitivity{1}_{2}-{3}Hz.txt'.format(stage, name, fmin, fmax)
-    return filePath
 
 def imageFilePath(OSDF=False):
     if OSDF:    

@@ -12,11 +12,11 @@ class upperLimitManager:
         self.setup = setup
         self.target = target
     
-    def upperLimitArgs(self, cohDay, freq, stage, freqDerivOrder,  numTopList, nInj, num_cpus, sftFiles, est_sftFiles, cluster, workInLocalDir, OSDF): 
+    def upperLimitArgs(self, cohDay, freq, stage, freqDerivOrder,  numTopList, nInj, skyUncertainty, num_cpus, sftFiles, est_sftFiles, cluster, workInLocalDir, OSDF): 
         sftFiles = ';'.join([Path(s).name for s in sftFiles])
         est_sftFiles = ';'.join([Path(s).name for s in est_sftFiles])
-        argListString = '--target {0} --obsDay {1} --cohDay {2} --freq {3} --stage {4} --freqDerivOrder {5} --numTopList {6} --nInj {7} --sftFiles {8} --est_sftFiles {9} --num_cpus {10}'.format(
-                self.target.name, self.obsDay, cohDay, freq, stage, freqDerivOrder, numTopList, nInj, sftFiles, est_sftFiles, num_cpus)
+        argListString = '--target {0} --obsDay {1} --cohDay {2} --freq {3} --stage {4} --freqDerivOrder {5} --numTopList {6} --nInj {7} --sftFiles {8} --est_sftFiles {9} --num_cpus {10} --skyUncertainty {11}'.format(
+                self.target.name, self.obsDay, cohDay, freq, stage, freqDerivOrder, numTopList, nInj, sftFiles, est_sftFiles, num_cpus, skyUncertainty)
         if cluster:
             argListString += " --cluster"
         
@@ -52,7 +52,7 @@ class upperLimitManager:
             Path(outlierFilePath).name, outlierFilePath, inputFiles)
         return argList
     
-    def makeUpperLimitDag(self, fmin, fmax, cohDay, freqDerivOrder=2, stage='upperLimit', nInj=100, numTopList=1000, num_cpus=4, request_memory='4GB', request_disk='4GB', cluster=False, workInLocalDir=False, OSG=False, OSDF=False):
+    def makeUpperLimitDag(self, fmin, fmax, cohDay, freqDerivOrder=2, stage='upperLimit', skyUncertainty=1e-4, nInj=100, numTopList=1000, num_cpus=4, request_memory='4GB', request_disk='4GB', cluster=False, workInLocalDir=False, OSG=False, OSDF=False):
               
         taskName = utils.taskName(self.target, stage, cohDay, freqDerivOrder, str(fmin)+'-'+str(fmax)) 
         dagFileName = fp.dagFilePath('', self.target, taskName, stage)
@@ -72,7 +72,7 @@ class upperLimitManager:
             image = Path(image).name
             sftFiles = utils.sftEnsemble(freq, self.obsDay, OSDF=OSDF)
             est_sftFiles = utils.sftEnsemble(freq, cohDay, OSDF=OSDF)
-            argList = self.upperLimitArgs(cohDay, freq, stage, freqDerivOrder, numTopList, nInj, num_cpus, sftFiles, est_sftFiles, cluster, workInLocalDir, OSDF)
+            argList = self.upperLimitArgs(cohDay, freq, stage, freqDerivOrder, numTopList, nInj, skyUncertainty, num_cpus, sftFiles, est_sftFiles, cluster, workInLocalDir, OSDF)
             wc.writeSearchSub(subFileName, exe, True, crFiles[0], crFiles[1], crFiles[2], argList, request_memory=request_memory, request_disk=request_disk, OSG=OSG, OSDF=OSDF, image=image)
             
            # call function to write .sub files for analyze result

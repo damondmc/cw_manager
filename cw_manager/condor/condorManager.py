@@ -111,7 +111,7 @@ class condorManager:
     
 ###### main use function
 
-    def makeSearchDag(self, cohDay, freq, param, numTopList, stage, freqDerivOrder, OSG=False, OSDF=False):
+    def makeSearchDag(self, cohDay, freq, param, numTopList, stage, freqDerivOrder, request_memory=None, OSG=False, OSDF=False):
         t0 = time.time()
         if OSDF and not OSG:
             print('Are you sure you want to read SFTs from OSDF but not using OSG computing resources?')
@@ -121,7 +121,8 @@ class condorManager:
         self.stage = stage
         self.cohDay, self.cohTime, self.nSeg, self.obsTime, self.refTime = utils.getTimeSetup(self.target.name, self.obsDay, cohDay)
         
-        request_memory = self.memoryUsage(self.stage)
+        if request_memory is None:
+            request_memory = self.memoryUsage(self.stage)
         
         # call function to write .sub files for search
         taskName = utils.taskName(self.target, self.stage, self.cohDay, self.freqDerivOrder, freq)
@@ -213,7 +214,7 @@ class condorManager:
             argList = ("--injections={{{0}}}".format(injParamStr))
         return argList
     
-    def makeInjectionDag(self, cohDay, freq, param, injParam, numTopList=1000, stage='search', freqDerivOrder=2, injFreqDerivOrder=4, OSG=False, OSDF=False):
+    def makeInjectionDag(self, cohDay, freq, param, injParam, numTopList=1000, stage='search', request_memory='2GB', freqDerivOrder=2, injFreqDerivOrder=4, OSG=False, OSDF=False):
         if OSDF and not OSG:
             print('Are you sure you want to read SFTs from OSDF but not using OSG computing resources?')
         self.freqParamName, self.freqDerivParamName = utils.phaseParamName(freqDerivOrder)
@@ -223,9 +224,7 @@ class condorManager:
         self.cohDay, self.cohTime, self.nSeg, self.obsTime, self.refTime = utils.getTimeSetup(self.target.name, self.obsDay, cohDay)
         injFreqParamName, _ = utils.phaseParamName(injFreqDerivOrder)
         self.injParamName = utils.injParamName() + injFreqParamName[1:]
-        
-        request_memory = '2GB'
-    
+   
         # call function to write .sub files for search
         taskName = utils.taskName(self.target, self.stage, self.cohDay, self.freqDerivOrder, freq)
         sftFiles = utils.sftEnsemble(freq, self.obsDay, OSDF=OSDF)

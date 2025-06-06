@@ -25,7 +25,6 @@ def normalize_array_with_nan(arr):
     
     return normalized_arr
 
-
 def plot_spectrograms(det, timestamps, frequency, fourier_data, stat=None):
     fig, axs = plt.subplots(1, 1, figsize=(16, 10))
     axs = [axs]

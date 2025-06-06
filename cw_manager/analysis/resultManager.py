@@ -134,9 +134,12 @@ class resultManager():
         return searchParam, injParam
     
     # Write results from each 1Hz frequency band of the search stage output
-    def _writeSearchResult(self, freq, mean2F_th, nJobs, numTopListLimit=1000, stage='search', freqDerivOrder=2, cluster=False, workInLocalDir=False):
+    def _writeSearchResult(self, cohDay, freq, mean2F_th, nJobs, numTopListLimit=1000, stage='search', freqDerivOrder=2, cluster=False, workInLocalDir=False):
         """
         Parameters:
+        - cohDay: int
+            The number of coherent observation days for the search, used in time setup and threshold calculations.
+
         - freq: int
             The frequency value for the 1Hz band being processed in this function.
 
@@ -163,7 +166,7 @@ class resultManager():
         """      
         
         # Generate the task name for organizing results
-        taskName = utils.taskName(self.target, stage, self.cohDay, freqDerivOrder, freq)
+        taskName = utils.taskName(self.target, stage, cohDay, freqDerivOrder, freq)
          
         # Initialize lists to collect outlier tables and data on job completion status
         outlierTableList = []
@@ -252,9 +255,30 @@ class resultManager():
             return outlierClusterFilePath
         else:
             return outlierFilePath 
+      
     
+# # Set up time and frequency parameters for the search based on target and observation day
+# self.cohDay, self.cohTime, self.nSeg, self.obsTime, self.refTime = utils.getTimeSetup(self.target.name, self.obsDay, cohDay)    
+
+# # Calculate the number of jobs required based on frequency derivatives and bandwidth
+# nf1dots = fr.getNf1dot(freq, self.setup.fBand, self.target.tau, df1dot=df1dot)
+# nf2dots = fr.getNf2dot(freq, self.setup.fBand, self.target.tau, df2dot=df2dot)
+# nJobs = int(nf1dots*nf2dots/self.setup.fBand)
+
+# # Determine or calculate the mean 2F threshold value
+
+# print('calculating mean2F threshold...')
+# mean2F_th = self.calMean2F_threshold(cohDay, freq, nJobs)           
+# print('mean2F threshold = ', mean2F_th)
+
+# # Write search results for the specified frequency
+# outlierFilePath = self._writeSearchResult(freq, mean2F_th, nJobs, numTopList, stage, freqDerivOrder, cluster, workInLocalDir)
+# print('Finish writing search result for {0} Hz'.format(freq))
+# return outlierFilePath
+
+   
     # Workflow for writing search results across a frequency range (fmin, fmax)
-    def writeSearchResult(self, cohDay, freq, df1dot, df2dot, numTopList=1000, stage='search', freqDerivOrder=2, fmin=20, fmax=475, cluster=False, workInLocalDir=False):
+    def writeSearchResult(self, cohDay, freq, mean2F_th, numTopList=1000, stage='search', freqDerivOrder=2, cluster=False, workInLocalDir=False):
         """
         Parameters:
         - cohDay: int
@@ -262,12 +286,9 @@ class resultManager():
 
         - freq: int
             The frequency value for the 1Hz band being processed.
-
-        - df1dot: float
-            The first frequency derivative spacing parameter, used to calculate the number of jobs needed for the search.
-
-        - df2dot: float
-            The second frequency derivative spacing parameter, also used in the calculation of the number of jobs required.
+            
+         - mean2F_th: float
+            The threshold value of the mean 2F statistic, which determines whether an outlier qualifies for follow-up or further analysis.
 
         - numTopList: int, optional (default=1000)
             Maximum number of top outliers to keep for each job's results.
@@ -278,44 +299,27 @@ class resultManager():
         - freqDerivOrder: int, optional (default=2)
             Specifies the order of frequency derivatives to consider (e.g., df1dot, df2dot) when calculating threshold and creating results.
 
-        - fmin: float, optional (default=20)
-            Minimum frequency (in Hz) of the range to search. Sets the start of the frequency range for the search.
-
-        - fmax: float, optional (default=475)
-            Maximum frequency (in Hz) of the range to search. Sets the end of the frequency range.
-
         - cluster: bool, optional (default=False)
             If True, clusters outliers to consolidate similar results, saving computational costs and storage.
 
         - workInLocalDir: bool, optional (default=False)
             If True, stores output files in the local directory. This option might be useful for local testing.
-        """
-        
-        # Set up time and frequency parameters for the search based on target and observation day
-        self.cohDay, self.cohTime, self.nSeg, self.obsTime, self.refTime = utils.getTimeSetup(self.target.name, self.obsDay, cohDay)    
-        
-        # Calculate the number of jobs required based on frequency derivatives and bandwidth
-        nf1dots = fr.getNf1dot(freq, self.setup.fBand, self.target.tau, df1dot=df1dot)
-        nf2dots = fr.getNf2dot(freq, self.setup.fBand, self.target.tau, df2dot=df2dot)
-        nJobs = int(nf1dots*nf2dots/self.setup.fBand)
-        
-        # Determine or calculate the mean 2F threshold value
-
-        print('calculating mean2F threshold...')
-        mean2F_th = self.calMean2F_threshold(cohDay, freq, nJobs)           
-        print('mean2F threshold = ', mean2F_th)
+        """ 
         
         # Write search results for the specified frequency
-        outlierFilePath = self._writeSearchResult(freq, mean2F_th, nJobs, numTopList, stage, freqDerivOrder, cluster, workInLocalDir)
+        outlierFilePath = self._writeSearchResult(cohDay, freq, mean2F_th, nJobs, numTopList, stage, freqDerivOrder, cluster, workInLocalDir)
         print('Finish writing search result for {0} Hz'.format(freq))
         return outlierFilePath
 
     # function to write result from weave output in each 1Hz band
-    def _writeInjectionResult(self, freq, mean2F_th, nJobs, numTopListLimit=1000, stage='search', freqDerivOrder=2, workInLocalDir=False, cluster=False):
+    def _writeInjectionResult(self, cohDay, freq, mean2F_th, nJobs, numTopListLimit=1000, stage='search', freqDerivOrder=2, workInLocalDir=False, cluster=False):
         """
         Writes the injection results from the weave output for a given frequency.
 
         Parameters:
+        - cohDay: int
+            The number of coherent observation days for the search, used in time setup and threshold calculations.
+
         - freq: int
             The frequency band in Hz for which results are being written.
 
@@ -344,7 +348,7 @@ class resultManager():
         - outlierFilePath: str
             The path to the output file containing the results.
         """
-        taskName = utils.taskName(self.target, stage, self.cohDay, freqDerivOrder, freq)
+        taskName = utils.taskName(self.target, stage, cohDay, freqDerivOrder, freq)
         outlierTableList = []
         injTableList = []
         info_data =np.recarray((nJobs,), dtype=[(key, '>f8') for key in ['freq', 'jobIndex', 'outliers']]) 
@@ -439,22 +443,22 @@ class resultManager():
         return outlierFilePath 
 
     #work flow to write injection-search result in 1Hz band
-    def writeInjectionResult1Hz(self, mean2F_th, nJobs, cohDay, freq, numTopList=1000, stage='search', freqDerivOrder=2, workInLocalDir=False, cluster=False):
+    def writeInjectionResult(self, cohDay, freq, mean2F_th, nJobs, numTopList=1000, stage='search', freqDerivOrder=2, workInLocalDir=False, cluster=False):
         """
         Writes the injection results for a specified frequency in the injection-search workflow.
 
         Parameters:
-        - mean2F_th: float
-            The threshold of detection statistic for being a outlier.
-
-        - nJobs: int
-            The number of jobs in the 1Hz band being processed.
-
         - cohDay: int
             The number of coherent observation days for the search, used in time setup and threshold calculations.
 
         - freq: float
             The frequency in Hz for which the injection results are being written.
+
+        - mean2F_th: float
+            The threshold of detection statistic for being a outlier.
+
+        - nJobs: int
+            The number of jobs in the 1Hz band being processed.
 
         - numTopList: int, optional
             The limit on the number of top results to return (default is 1000).
@@ -475,13 +479,11 @@ class resultManager():
         - outlierFilePath: str
             The path to the output file containing the injection results.
         """
-
-        self.cohDay, self.cohTime, self.nSeg, self.obsTime, self.refTime = utils.getTimeSetup(self.target.name, self.obsDay, cohDay)     
                
-        outlierFilePath = self._writeInjectionResult(freq, mean2F_th, nJobs, numTopList, stage, freqDerivOrder, workInLocalDir, cluster)
+        outlierFilePath = self._writeInjectionResult(cohDay, freq, mean2F_th, nJobs, numTopList, stage, freqDerivOrder, workInLocalDir, cluster)
         print('Finish writing injection result for {0} Hz'.format(freq))
         return outlierFilePath
-    
+
     def _writeFollowUpResult(self, cohDay, freq, mean2F_th, nJobs, numTopListLimit=1000, stage='search', freqDerivOrder=2, 
                                    workInLocalDir=True, inj=False, cluster=False,
                                    chunk_index=0, chunk_size=1):
@@ -641,229 +643,8 @@ class resultManager():
                 outlierFilePath = Path(outlierFilePath).name
             cluster_hdul.writeto(outlierFilePath, overwrite=True)
         return outlierFilePath 
- 
-    def writeFollowUpResult(self, old_cohDay, new_cohDay, freq, numTopList=1000, 
-                            old_stage='search', new_stage='followUp-1', 
-                            old_freqDerivOrder=2, new_freqDerivOrder=2, ratio=0, 
-                            workInLocalDir=True, inj=False, cluster=False,
-                            chunk_index=0, chunk_size=1, chunk_count=None):
-        """
-        Writes the follow-up result for a given frequency based on previous analysis.
-
-        Parameters:
-        - old_cohDay: int
-            The old coherence day for the analysis.
-
-        - new_cohDay: int
-            The new coherence day for the analysis.
-
-        - freq: float
-            The frequency in Hz for which results are being written.
-
-        - numTopList: int, optional
-            The maximum number of top results to consider. Default is 1000.
-
-        - old_stage: str, optional
-            The stage of the previous analysis (e.g., 'search'). Default is 'search'.
-
-        - new_stage: str, optional
-            The stage of the current analysis (e.g., 'followUp-1'). Default is 'followUp-1'.
-
-        - old_freqDerivOrder: int, optional
-            The order of frequency derivative used in the old analysis. Default is 2.
-
-        - new_freqDerivOrder: int, optional
-            The order of frequency derivative used in the new analysis. Default is 2.
-
-        - ratio: float, optional
-            The ratio to adjust the mean2F threshold for the follow-up analysis. Default is None.
-
-        - workInLocalDir: bool, optional
-            If True, work with local directory paths. Default is True.
-
-        - inj: bool, optional
-            If True, includes injections in the follow-up result. Default is False
-        """
-
-        taskName = utils.taskName(self.target, old_stage, old_cohDay, old_freqDerivOrder, freq)
-        outlierFilePath = fp.outlierFilePath(self.target, freq, taskName, old_stage, cluster=cluster)
-        if workInLocalDir:
-            outlierFilePath = Path(outlierFilePath).name
-        
-        data = fits.getdata(outlierFilePath, 1) 
-        mean2F_th = data['mean2F'] * ratio
-        
-        print('ratio=',ratio)
-        if chunk_count is not None:
-            mean2F_th = mean2F_th[chunk_index*chunk_size:(chunk_index+1)*chunk_size]
-        nJobs = mean2F_th.size
-        outlierFilePath = self._writeFollowUpResult(new_cohDay, freq, mean2F_th, nJobs, numTopList, new_stage, new_freqDerivOrder, 
-                                                    workInLocalDir, inj, cluster, chunk_index=chunk_index, chunk_size=chunk_size)
-
-        print('Finish writing followUp result for {0} Hz'.format(freq))
-        return outlierFilePath
-
-    def _writeFollowUpResult_new(self, cohDay, freq, mean2F_th, nJobs, numTopListLimit=1000, stage='search', freqDerivOrder=2, 
-                                   workInLocalDir=True, inj=False, cluster=False,
-                                   chunk_index=0, chunk_size=1):
-        """
-        Writes the follow-up results for injections at a given frequency.
-
-        Parameters:
-        - cohDay: int
-            The coherence day for the analysis.
-
-        - freq: float
-            The frequency in Hz for which follow-up results are being written.
-
-        - mean2F_th: numpy.ndarray
-            The mean 2F threshold values used for identifying outliers.
-
-        - nJobs: int
-            The number of jobs that were run for this frequency.
-
-        - numTopListLimit: int, optional
-            The maximum number of top results to consider. Default is 1000.
-
-        - stage: str, optional
-            The stage of the analysis (e.g., 'search'). Default is 'search'.
-
-        - freqDerivOrder: int, optional
-            The order of frequency derivative used in the analysis. Default is 2.
-
-        - workInLocalDir: bool, optional
-            If True, work with local directory paths. Default is True.
-
-        - inj: bool, optional
-            If True, includes injections in the follow-up result. Default is False.
-
-        - cluster: bool, optional
-            If True, indicates that results should be stored for clustering. Default is False.
-
-        - chunk_index: int, optional
-            The index of the current chunk being processed. Default is 0.
-
-        - chunk_size: int, optional
-            The size of the chunks for processing. Default is 1.
-
-        Returns:
-        - outlierFilePath: str
-            The path to the output file containing the follow-up results.
-        """
-        
-        taskName = utils.taskName(self.target, stage, cohDay, freqDerivOrder, freq)
     
-        outlierTableList = []
-        injTableList = []
-        info_data = np.recarray((nJobs,), dtype=[(key, '>f8') for key in ['freq', 'jobIndex', 'outliers']]) 
- 
-        weaveFilePath = fp.weaveOutputFilePath(self.target, freq, taskName, 1, stage)
-        if workInLocalDir:
-            weaveFilePath = Path(weaveFilePath).name
-            
-        # Iterate over each job to gather follow-up results
-        for i, jobIndex in enumerate(range(chunk_index*chunk_size+1, chunk_index*chunk_size+nJobs+1)):
-            weaveFilePath = fp.weaveOutputFilePath(self.target, freq, taskName, jobIndex, stage)
-            if workInLocalDir:
-                weaveFilePath = Path(weaveFilePath).name 
-            # Create outlier table from the weave output
-            weave_data = fits.getdata(weaveFilePath, 1)
-            spacing = utils.getSpacing(weaveFilePath, freqDerivOrder)
-            _outlier = self.makeOutlierTable(weave_data, spacing, mean2F_th[i], numTopListLimit, freqDerivOrder)
-            # If injections are considered, create an injection table as well
-            if inj:
-                injParam = fits.getdata(weaveFilePath, 2)
-                _outlier, injParam = self.makeInjectionTable(injParam, _outlier, freqDerivOrder)
-                
-            # Append results to the respective lists
-            if len(_outlier) == 0:
-                outlierTableList.append( _outlier )
-            else:
-                outlierTableList.append( _outlier )
-                if inj:
-                    injTableList.append( injParam )
-                    
-            info_data[i] = freq, jobIndex, len(_outlier)  
-
-        # append all tables in the file into one
-        # Create a PrimaryHDU object
-        primary_hdu = fits.PrimaryHDU()
-               
-        if len(outlierTableList) !=0:
-            outlier_hdu =  fits.BinTableHDU(data=vstack(outlierTableList), name=stage+'_outlier')
-        else:
-            outlier_hdu =  fits.BinTableHDU(name=stage+'_outlier')
-            print('No outlier.')
-        
-        # if software injection is included 
-        if inj:
-            if len(injTableList) != 0:
-                inj_hdu =  fits.BinTableHDU(data=vstack(injTableList), name='inj')
-            else:
-                inj_hdu =  fits.BinTableHDU(name='inj')
-        
-        # summary information of the outliers
-        info_hdu =  fits.BinTableHDU(data=info_data, name='info')
-        
-        if inj:
-            outlierFilePath = fp.outlierFilePath(self.target, freq, taskName, stage, cluster=False)
-        else:
-            outlierFilePath = fp.outlierFilePath(self.target, freq, taskName, stage, cluster=cluster)
-        if workInLocalDir:
-            outlierFilePath = Path(outlierFilePath).name
-        if chunk_size !=1:
-            outlierFilePath = outlierFilePath[:-4] + '_chunk{}.fts'.format(chunk_index)
-        utils.makeDir([outlierFilePath])
-        
-        outlier_hdul = fits.HDUList()
-        outlier_hdul.append(primary_hdu)
-        outlier_hdul.append(outlier_hdu)
-        if inj:
-            outlier_hdul.append(inj_hdu)
-        outlier_hdul.append(info_hdu)
-        outlier_hdul.writeto(outlierFilePath, overwrite=True)     
-        
-        if cluster:
-            if outlier_hdu.data.size > 1:
-                cluster_hdul = fits.HDUList()
-                centers_idx, cluster_size, cluster_member = utils.clustering(outlier_hdu.data, freqDerivOrder) 
-                if inj:
-                    center_idx_for_each_outlier = np.full(outlier_hdu.data.size,-1)
-                    processed_indices = set()
-                    for ci, members in zip(centers_idx, cluster_member):
-                        idx = np.array([item for item in members if item not in processed_indices])
-                        center_idx_for_each_outlier[idx] = ci
-                        processed_indices.update(members)
-
-                    cluster_data = outlier_hdu.data[center_idx_for_each_outlier]
-                    cluster_hdu = fits.BinTableHDU(data=cluster_data, name=stage+'_outlier')
-                else:
-                    cluster_data = outlier_hdu.data[centers_idx]
-                    cluster_hdu = fits.BinTableHDU(data=cluster_data, name=stage+'_outlier')
-
-                info_data = np.recarray((cluster_size.size,), dtype=[(key, '>f8') for key in ['freq', 'chunkIndex', 'clusterIndex', 'noOutliersWithin']]) 
-                for i in range(cluster_size.size):
-                    info_data[i] = freq, chunk_index, i, cluster_size[i]
-                info_hdu =  fits.BinTableHDU(data=info_data, name='info_clustered')
-
-                cluster_hdul = fits.HDUList()
-                cluster_hdul.append(primary_hdu)
-                cluster_hdul.append(cluster_hdu)
-                if inj:
-                    cluster_hdul.append(inj_hdu)
-                cluster_hdul.append(info_hdu)
-            else:
-                cluster_hdul = outlier_hdu    
-            
-            outlierFilePath = fp.outlierFilePath(self.target, freq, taskName, stage, cluster=cluster)
-            if chunk_size !=1:
-                outlierFilePath = outlierFilePath[:-4] + '_chunk{}.fts'.format(chunk_index)
-            if workInLocalDir:
-                outlierFilePath = Path(outlierFilePath).name
-            cluster_hdul.writeto(outlierFilePath, overwrite=True)
-        return outlierFilePath 
-    
-    def writeFollowUpResult_new(self, old_mean2F, new_cohDay, freq, numTopList=1000, 
+    def writeFollowUpResult(self, new_cohDay, freq, old_mean2F, numTopList=1000, 
                             new_stage='followUp-1', new_freqDerivOrder=2, ratio=0, 
                             workInLocalDir=True, inj=False, cluster=False,
                             chunk_index=0, chunk_size=1, chunk_count=None):
@@ -876,6 +657,9 @@ class resultManager():
 
         - freq: float
             The frequency in Hz for which results are being written.
+            
+        - old_mean2F: numpy.ndarray
+            The mean 2F value of the outliers at previous stage (shorter coherence time).
 
         - numTopList: int, optional
             The maximum number of top results to consider. Default is 1000.
@@ -902,7 +686,7 @@ class resultManager():
         if chunk_count is not None:
             mean2F_th = mean2F_th[chunk_index*chunk_size:(chunk_index+1)*chunk_size]
         nJobs = mean2F_th.size
-        outlierFilePath = self._writeFollowUpResult_new(new_cohDay, freq, mean2F_th, nJobs, numTopList, new_stage, new_freqDerivOrder, 
+        outlierFilePath = self._writeFollowUpResult(new_cohDay, freq, mean2F_th, nJobs, numTopList, new_stage, new_freqDerivOrder, 
                                                     workInLocalDir, inj, cluster, chunk_index=chunk_index, chunk_size=chunk_size)
 
         print('Finish writing followUp result for {0} Hz'.format(freq))

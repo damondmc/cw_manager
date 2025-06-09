@@ -287,7 +287,7 @@ class resultManager():
         - freq: int
             The frequency value for the 1Hz band being processed.
             
-         - mean2F_th: float
+        - mean2F_th: float
             The threshold value of the mean 2F statistic, which determines whether an outlier qualifies for follow-up or further analysis.
 
         - numTopList: int, optional (default=1000)
@@ -308,6 +308,118 @@ class resultManager():
         
         # Write search results for the specified frequency
         outlierFilePath = self._writeSearchResult(cohDay, freq, mean2F_th, nJobs, numTopList, stage, freqDerivOrder, cluster, workInLocalDir)
+        print('Finish writing search result for {0} Hz'.format(freq))
+        return outlierFilePath
+    
+    
+    
+    # Write results from each 1Hz frequency band of the search stage output
+    def _writeSearchResultFromSaturatedBand(self, cohDay, freq, mean2F_th, jobIndex, numTopListLimit=1, stage='search', freqDerivOrder=2, workInLocalDir=False):
+        """
+        Parameters:
+        - cohDay: int
+            The number of coherent observation days for the search, used in time setup and threshold calculations.
+
+        - freq: int
+            The frequency value for the 1Hz band being processed in this function.
+
+        - mean2F_th: float
+            The threshold value of the mean 2F statistic, which determines whether an outlier qualifies for follow-up or further analysis.
+
+        - jobIndex: int array
+            Array of indices identifying which jobs within the 1Hz band are saturated, used for tracking and organizing job-specific results.
+
+        - nJobs: int
+            Number of jobs to split the work into. Each job handles a portion of the calculations for this frequency band.
+
+        - numTopListLimit: int, optional (default=1000)
+            Maximum number of top outliers to be included in the result for each job. This helps manage the computational and memory limits.
+
+        - stage: str, optional (default='search')
+            The stage of the analysis, usually 'search' or 'follow-up'. This determines the task naming conventions used when writing output files.
+
+        - freqDerivOrder: int, optional (default=2)
+            The order of frequency derivative to be used in the clustering and spacing calculations. It decides which derivatives (like df, df1dot) are considered.
+
+        - cluster: bool, optional (default=False)
+            If True, perform clustering on the outliers to consolidate similar results, saving space and computational effort.
+
+        - workInLocalDir: bool, optional (default=False)
+            If True, writes output to the local directory rather than the default path. This may be used for testing or troubleshooting.
+        """      
+        
+        # Generate the task name for organizing results
+        taskName = utils.taskName(self.target, stage, cohDay, freqDerivOrder, freq)
+         
+        # Initialize lists to collect outlier tables and data on job completion status
+        outlierTableList = []
+    
+        # Loop over each job to process results
+        for idx in tqdm(jobIndex):
+            # Generate file path for each job's result, adjusting if working in local directory
+            weaveFilePath = fp.weaveOutputFilePath(self.target, freq, taskName, idx, stage)
+            if workInLocalDir:
+                weaveFilePath = Path(weaveFilePath).name
+                
+            weave_data = fits.getdata(weaveFilePath, 1)
+            spacing = utils.getSpacing(weaveFilePath, freqDerivOrder)
+            # Generate outlier table for the job and assess if it reached the limit
+            _outlier = self.makeOutlierTable(weave_data, spacing, mean2F_th, numTopListLimit, freqDerivOrder)  
+            outlierTableList.append( _outlier )
+           
+        # Set up a FITS file with outliers, non-saturated bands, and search settings
+        primary_hdu = fits.PrimaryHDU()
+        primary_hdu.header['HIERARCH mean2F_th'] = mean2F_th
+        primary_hdu.header['HIERARCH cluster_nSpacing'] = ''
+        # Write parameter spacing values into header
+        for name, value in spacing.items():
+            primary_hdu.header['HIERARCH {}'.format(name)] = value
+        
+        # Create table HDUs for outliers, job information, and non-saturated bands
+        outlier_hdu =  fits.BinTableHDU(data=vstack(outlierTableList), name=stage+'SatBand_outlier')
+        
+        # Compile all HDUs into a FITS HDU list and write to a specified file path
+        outlier_hdul = fits.HDUList([primary_hdu, outlier_hdu])
+        taskName = utils.taskName(self.target, stage+'SatBand', cohDay, freqDerivOrder, freq)
+        outlierFilePath = fp.outlierFilePath(self.target, freq, taskName, stage, cluster=False)
+        if workInLocalDir:
+            outlierFilePath = Path(outlierFilePath).name
+        utils.makeDir([outlierFilePath])
+        outlier_hdul.writeto(outlierFilePath, overwrite=True)  
+       
+        return outlierFilePath 
+   
+    # Workflow for writing search results across a frequency range (fmin, fmax)
+    def writeSearchResultFromSaturatedBand(self, cohDay, freq, mean2F_th, jobIndex, numTopList=1, stage='search', freqDerivOrder=2, workInLocalDir=False):
+        """
+        Parameters:
+        - cohDay: int
+            The number of coherent observation days for the search, used in time setup and threshold calculations.
+
+        - freq: int
+            The frequency value for the 1Hz band being processed.
+        
+        - mean2F_th: float
+            The threshold value of the mean 2F statistic, which determines whether an outlier qualifies for follow-up or further analysis.
+            
+        - jobIndex: int array
+            Array of indices identifying which jobs within the 1Hz band are saturated, used for tracking and organizing job-specific results.
+
+        - numTopList: int, optional (default=1)
+            Maximum number of top outliers to keep for each job's results.
+
+        - stage: str, optional (default='search')
+            The stage of the analysis. Determines the naming and organizational conventions for output files.
+
+        - freqDerivOrder: int, optional (default=2)
+            Specifies the order of frequency derivatives to consider (e.g., df1dot, df2dot) when calculating threshold and creating results.
+
+        - workInLocalDir: bool, optional (default=False)
+            If True, stores output files in the local directory. This option might be useful for local testing.
+        """ 
+        
+        # Write search results for the specified frequency
+        outlierFilePath = self._writeSearchResultFromSaturatedBand(cohDay, freq, mean2F_th, jobIndex, numTopList, stage, freqDerivOrder, workInLocalDir)
         print('Finish writing search result for {0} Hz'.format(freq))
         return outlierFilePath
 

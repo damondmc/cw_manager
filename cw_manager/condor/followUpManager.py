@@ -57,46 +57,7 @@ class followupManager:
         argList="OUTPUTFILE=\"{0}\" REMAPOUTPUTFILE=\"{1}\" TRANSFERFILES=\"{2}\" ".format(
             Path(outlierFilePath).name, outlierFilePath, inputFiles)
         return argList
-    
-    def xxmakeFollowUpDag(self, configFile, fmin, fmax, stage='followUp', upperLimit_stage='upperLimit', numTopList=1000, request_cpu=4, request_disk='4GB', old_stage='search', real=True, inj=False, cluster=False, workInLocalDir=False, OSG=False, OSDF=False):
-              
-        cohDay, freqDerivOrder = np.loadtxt(configFile)[0].T
-        if cohDay.is_integer(): 
-            cohDay = int(cohDay)
-        freqDerivOrder = int(freqDerivOrder)
-        
-        taskName = utils.taskName(self.target, stage, cohDay, freqDerivOrder, str(fmin)+'-'+str(fmax)) 
-        dagFileName = fp.dagFilePath('', self.target, taskName, stage)
-        Path(dagFileName).unlink(missing_ok=True)
-        
-        for jobIndex, freq in tqdm(enumerate(range(fmin, fmax), 1)):
-            taskName = utils.taskName(self.target, stage, cohDay, freqDerivOrder, freq)
-            exe = fp.followUpExecutableFilePath()
-            local_exe = Path(exe).name
-            subFileName = fp.condorSubFilePath(self.target, freq, taskName, stage)
-            Path(subFileName).unlink(missing_ok=True)
-            
-            crFiles = fp.condorRecordFilePath(freq, self.target, taskName, stage)
-            utils.makeDir(crFiles)
-            
-            image = fp.imageFilePath(OSDF)
-            image = Path(image).name
-            sftFiles = utils.sftEnsemble(freq, self.obsDay, OSDF=OSDF)
-            _taskName = utils.taskName(self.target, upperLimit_stage, cohDay, freqDerivOrder, freq)
-            ULResultFile = fp.outlierFilePath(self.target, freq, _taskName, upperLimit_stage, cluster=cluster) 
-            h0 = fits.getheader(ULResultFile)['h95']
-            
-            argList = self.followUpArgs(h0, cohDay, freq, stage, freqDerivOrder, numTopList, sftFiles, request_cpu, real, inj, cluster, workInLocalDir)
-            wc.writeSearchSub(subFileName, local_exe, True, crFiles[0], crFiles[1], crFiles[2], argList, request_memory='4GB', request_disk=request_disk, request_cpu=request_cpu, OSG=OSG, OSDF=OSDF, image=image)
-            
-           # call function to write .sub files for analyze result
-            ######################## Argument string use to write to DAG  ########################        
-            argList = self.transferFileArgs(exe, configFile, cohDay, freq, freqDerivOrder, stage, sftFiles, old_stage, cluster, OSG, OSDF)
-                             
-            # Call function from WriteCondorFiles.py which will write DAG 
-            wc.writeSearchDag(dagFileName, taskName, subFileName, jobIndex, argList)
-        print('Finish writing follow-up dag from {0} stage for {1}-{2}Hz'.format(stage, fmin, fmax))
-
+   
     def makeFollowUpDag(self, configFile, fmin, fmax, h0, stage='followUp', numTopList=1000, request_cpu=4, request_disk='4GB', old_stage='search', real=True, inj=False, cluster=False, workInLocalDir=False, OSG=False, OSDF=False, fromSaturatedBand=False):
               
         cohDay, freqDerivOrder = np.loadtxt(configFile)[0].T

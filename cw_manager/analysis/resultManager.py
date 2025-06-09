@@ -371,12 +371,13 @@ class resultManager():
         primary_hdu = fits.PrimaryHDU()
         primary_hdu.header['HIERARCH mean2F_th'] = mean2F_th
         primary_hdu.header['HIERARCH cluster_nSpacing'] = ''
-        # Write parameter spacing values into header
-        for name, value in spacing.items():
-            primary_hdu.header['HIERARCH {}'.format(name)] = value
         
+
         # Create table HDUs for outliers, job information, and non-saturated bands
-        outlier_hdu =  fits.BinTableHDU(data=vstack(outlierTableList), name=stage+'SatBand_outlier')
+        if len(outlierTableList) == 0:
+            outlier_hdu =  fits.BinTableHDU(name=stage+'SatBand_outlier')
+        else:
+            outlier_hdu =  fits.BinTableHDU(data=vstack(outlierTableList), name=stage+'SatBand_outlier')
         
         # Compile all HDUs into a FITS HDU list and write to a specified file path
         outlier_hdul = fits.HDUList([primary_hdu, outlier_hdu])

@@ -81,6 +81,14 @@ def getBinTable(target, freq, cohDay, freqDerivOrder, stage, extname, cluster, w
     data = fits.getdata(dataFilePath, extname=extname)
     return data
 
+def getHeader(target, freq, cohDay, freqDerivOrder, stage, cluster, workInLocalDir):
+    _taskName = taskName(target, stage, cohDay, freqDerivOrder, freq)
+    dataFilePath = fp.outlierFilePath(target, freq, _taskName, stage, cluster=cluster)
+    if workInLocalDir:
+        dataFilePath = Path(dataFilePath).name
+    data = fits.getheader(dataFilePath)
+    return data
+
 
 def sftEnsemble(freq, obsDay, OSDF=False):
     H1path = Path(fp.sftFilePath(obsDay, freq, detector='H1', OSDF=OSDF))

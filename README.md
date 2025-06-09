@@ -1,8 +1,6 @@
 # CW_manager 
 
-### A package to create condor jobs for continuous gravitational wave directed search 
-
-### It is a private repository 
+### A package to create condor jobs for directed search continuous gravitational wave signals.
 
 ### To install,
 

@@ -166,31 +166,6 @@ def read_run_time(file_path):
 
     return _parse_log_value(file_path, 'completion-loop', logic)
 
-def read_estimated_upper_strain_limit(file_path):
-    """Parses estimated upper limit h0."""
-    try:
-        with open(file_path, 'r') as f:
-            # We need the last few lines, reading whole file might be unavoidable 
-            # unless we use seek, but files are usually small enough.
-            lines = f.readlines()
-            
-        if not lines:
-            return None
-
-        # Check if finished
-        if 'DONE' in lines[-1]:
-            target_line = lines[-2]
-        else:
-            logging.warning(f"Program not finished in {file_path}")
-            target_line = lines[-1]
-            
-        if '=' in target_line:
-            return _extract_number(target_line.split('=')[2])
-            
-    except Exception as e:
-        logging.error(f"Error reading upper limit from {file_path}: {e}")
-    return None
-
 def is_mismatch_exist(file_path):
     """Checks if 'Size not match' error exists in the log."""
     try:
@@ -201,14 +176,3 @@ def is_mismatch_exist(file_path):
         return False
     except FileNotFoundError:
         return False
-
-def get_meta_info(filename):
-    """
-    Reads meta information from FITS header.
-    Parameters:
-        - filename (str): Path to the FITS file.
-    Returns:
-        - Tuple containing CPU total time, peak memory usage, and number of templates.
-    """
-    data = fits.getheader(filename, ext=0)
-    return data['CPU TOTAL'], data['PEAKMEM'], data['NSEMITMPL NU0DOT']

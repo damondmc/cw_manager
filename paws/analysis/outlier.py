@@ -589,7 +589,7 @@ class ResultAnalysisManager:
         - inj: bool, optional
             If True, includes injections in the follow-up result. Default is False
         """
-        print(f'Follow-up F-statistic threshold: {mean2f_th}')
+        #print(f'Follow-up F-statistic threshold: {mean2f_th}')
         
         if chunk_count is not None:
             # Slice the threshold array for this specific chunk

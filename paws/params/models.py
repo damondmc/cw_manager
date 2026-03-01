@@ -12,12 +12,12 @@ class PowerLawModel:
         self.tau = tau
 
     def get_n_f1(self, freq, f0_band, df1=1.5e-9):
-        _, _, bandwidth = self.f1_broad_range(freq, f0_band, self.tau)
+        _, _, bandwidth = self.f1_broad_range(freq, f0_band)
         n = bandwidth / df1
         return np.ceil(n).astype(int)
 
     def get_n_f2(self, freq, f0_band, df2=1.0e-19):
-        f1_min, f1_max, _ = self.f1_broad_range(freq, f0_band, self.tau)
+        f1_min, f1_max, _ = self.f1_broad_range(freq, f0_band)
         _, _, bandwidth = self.f2_broad_range(freq, f0_band, f1_min, f1_max)
         n = bandwidth / df2
         return np.ceil(n).astype(int)

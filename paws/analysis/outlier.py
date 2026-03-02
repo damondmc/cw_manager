@@ -1,9 +1,9 @@
 from astropy.io import fits
 from astropy.table import Table, vstack
 import numpy as np
-#from tqdm import tqdm
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
 from paws.filepaths import PathManager
 from paws.definitions import task_name, phase_param_name
@@ -27,35 +27,10 @@ class ResultAnalysisManager:
         self.target = target
         self.paths = PathManager(config, target)
         
-    def read_template_count(self, taskname, freq, n_jobs, stage='search', freq_deriv_order=2):
-        """Reads the template count from the weave output for each job in a specified frequency band."""
-        template_list = []
-        
-        # Construct specific output filenames using PathManager
-        crfiles = self.paths.condor_record_files(freq, taskname, stage)
-        base_out_path = str(crfiles[0]).rsplit('.', 1)[0] + '.'
-
-        for job_index in range(1, n_jobs + 1):
-            out_file_path = f"{base_out_path}{job_index}"
-            template_list.append(read_template_count(out_file_path))
-        return template_list
-        
-    def get_mean2f_threshold(self, taskname, freq, n_jobs, n_seg, stage='search'):
-        """Calculates the Mean 2F threshold."""
-        # Get the number of templates based on coherence time, frequency, and job count
-        n_temp = self.read_template_count(taskname, freq, n_jobs, stage=stage)
-        if None in n_temp:
-            print(f"Warning: Some template counts are None for {freq} Hz.")
-            n_temp = [t if t is not None else 0 for t in n_temp]
-        
-        total_templates = sum([t for t in n_temp if t is not None])
-        mean2f_th = detection_stat_threshold(total_templates, n_seg)            
-        return mean2f_th
-
-    def make_outlier_table(self, data, spacing, mean2f_th, toplist_limit=1000):    
+    def make_outlier_table(self, data, spacing, mean2f_th, num_toplist=1000):    
         """Filters data to create an outlier table."""
         # Read and limit the data to the top entries
-        data = data[:toplist_limit]
+        data = data[:num_toplist]
         
         # Mask data with mean 2F values greater than the threshold
         mask = data['mean2F'] > mean2f_th
@@ -85,40 +60,73 @@ class ResultAnalysisManager:
         search_param = Table(search_param)[:1] 
 
         return search_param, inj_param
-    
-    def _make_search_outlier(self, taskname, freq, mean2f_th, n_jobs, num_top_list_limit=1000, 
-                             stage='search', freq_deriv_order=2, cluster=False, work_in_local_dir=False):
+
+    def _make_search_outlier(self, taskname, freq, mean2f_th, n_jobs, num_toplist=1000, 
+                             stage='search', freq_deriv_order=2, cluster=False, work_in_local_dir=False, max_workers=16): 
         """Internal core function to read job outputs, filter outliers, and write the combined FITS file."""      
         outlier_table_list = []
         # Info table to track stats per job
         info_data = np.recarray((n_jobs,), dtype=[(key, '>f8') for key in ['freq', 'jobIndex', 'outliers', 'saturated']]) 
 
-        for i, job_index in enumerate(tqdm(range(1, n_jobs + 1), desc=f"Collecting {freq}Hz")):
-            
-            # 1. Get Path
+        max_spacing = {} 
+
+        def _process_single_job(args):
+            i, job_index = args
             weave_file_path = self.paths.weave_output_file(freq, taskname, job_index, stage)
             if work_in_local_dir:
                 weave_file_path = Path(weave_file_path).name
             
             try:
                 weave_data = fits.getdata(weave_file_path, 1)
-                # 3. Get Spacing (Resolution) from FITS header or tools
+                # Get Spacing (Resolution) from FITS header or tools
                 spacing = get_spacing(weave_file_path, freq_deriv_order)
                 
-                # 4. Filter Outliers
-                _outlier = self.make_outlier_table(weave_data, spacing, mean2f_th, num_top_list_limit)  
+                # Filter Outliers
+                _outlier = self.make_outlier_table(weave_data, spacing, mean2f_th, num_toplist)  
 
-                # 5. Check Saturation
-                if len(_outlier) >= num_top_list_limit:
-                    info_data[i] = freq, job_index, num_top_list_limit, 1  # Saturated
+                # Check Saturation
+                if len(_outlier) >= num_toplist:
+                    return (i, freq, job_index, num_toplist, 1, None, spacing) # Saturated
                 else:
-                    info_data[i] = freq, job_index, len(_outlier), 0  # OK
-                    outlier_table_list.append(_outlier)
+                    return (i, freq, job_index, len(_outlier), 0, _outlier, spacing)  # OK
+                    
             except FileNotFoundError:
-                print(f"Warning: File not found {weave_file_path}")
-                info_data[i] = freq, job_index, 0, 0
+                # Return 0s and Nones if the file is completely missing
+                return (i, freq, job_index, 0, 0, None, None)
 
-        # 6. Identify Non-Saturated Bands
+        
+        job_args = [(i, job_index) for i, job_index in enumerate(range(1, n_jobs + 1))]
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # map() processes concurrently; list(tqdm()) forces it to wait and shows the progress bar
+            results = list(tqdm(executor.map(_process_single_job, job_args), total=n_jobs, desc=f"Collecting {freq}Hz"))
+
+        # --- 3. Unpack the threaded results sequentially to avoid race conditions ---
+        for res in results:
+            i, r_freq, r_job_index, r_outliers, r_saturated, r_outlier_data, r_spacing = res
+            
+            info_data[i] = r_freq, r_job_index, r_outliers, r_saturated
+            
+            if r_outlier_data is not None:
+                outlier_table_list.append(r_outlier_data)
+                
+            if r_spacing is not None:
+                if not max_spacing:
+                    # First time we see spacing, make a copy of it to start our tracker
+                    max_spacing = r_spacing.copy()
+                else:
+                    # For all other files, compare each key and keep the max
+                    for key, val in r_spacing.items():
+                        if key in max_spacing:
+                            max_spacing[key] = max(max_spacing[key], val)
+                        else:
+                            max_spacing[key] = val 
+
+        # Quick check to warn you if files were missing
+        missing_files = len([r for r in results if r[6] is None])
+        if missing_files > 0:
+            print(f"Warning: {missing_files} files were not found for {freq}Hz.")
+
         sat = info_data['saturated'].reshape(int(1/self.config['f0_band']), int(n_jobs*self.config['f0_band']))  
 
         idx = np.where(sat.sum(axis=1) == 0)[0]
@@ -126,46 +134,51 @@ class ResultAnalysisManager:
         
         if len(idx) > 0:
             non_sat_band['nonSatBand'] = int(freq) + np.array(idx) * self.config['f0_band']
-           
-        # 7. Create HDUs
+        
+        # --- Create HDUs ---
         primary_hdu = fits.PrimaryHDU()
         primary_hdu.header['HIERARCH mean2F_th'] = mean2f_th        
 
-        for name, value in spacing.items():
+        # Apply the absolute maximum spacing values we found to the header
+        for name, value in max_spacing.items():
             primary_hdu.header['HIERARCH {}'.format(name)] = value
         
-        outlier_hdu = fits.BinTableHDU(data=vstack(outlier_table_list), name=stage+'_outlier')
+        # If no outliers were found across all files, vstack will fail, so we safeguard it
+        if outlier_table_list:
+            outlier_hdu = fits.BinTableHDU(data=vstack(outlier_table_list), name=stage+'_outlier')
+        else:
+            # Create an empty table with the correct format if there are zero outliers
+            outlier_hdu = fits.BinTableHDU(name=stage+'_outlier')
+            
         info_hdu = fits.BinTableHDU(data=info_data, name='info') 
         nsb_hdu = fits.BinTableHDU(data=non_sat_band, name='nonSatBand')
 
         outlier_hdul = fits.HDUList([primary_hdu, outlier_hdu, info_hdu, nsb_hdu])
         
-        # 8. Write Combined File
         outlier_file_path = self.paths.outlier_file(freq, taskname, stage, cluster=False)
         if work_in_local_dir:
             outlier_file_path = Path(outlier_file_path).name
             
         make_dir([outlier_file_path])
         outlier_hdul.writeto(outlier_file_path, overwrite=True)  
-       
-        # 9. Clustering (Optional)
+    
         if cluster:
-            if outlier_hdu.data.size > 1:
+            if outlier_table_list and outlier_hdu.data.size > 1:
                 cluster_hdul = fits.HDUList()
                 
                 primary_hdu = fits.PrimaryHDU()
                 primary_hdu.header['HIERARCH mean2F_th'] = mean2f_th
                 primary_hdu.header['HIERARCH cluster_n_spacing'] = self.config['cluster_n_spacing']
                 
-                for name, value in spacing.items():
+                for name, value in max_spacing.items():
                     primary_hdu.header['HIERARCH {}'.format(name)] = value 
-       
+    
                 # Call Clustering Tool
                 centers_idx, cluster_size, _ = clustering(outlier_hdu.data, freq_deriv_order) 
                 
                 cluster_data = outlier_hdu.data[centers_idx]
                 cluster_hdu = fits.BinTableHDU(data=cluster_data, name=stage+'_outlier')
-     
+    
                 cluster_info = np.recarray((cluster_size.size,), dtype=[(key, '>f8') for key in ['freq', 'clusterIndex', 'noOutliersWithin']]) 
                 for i in range(cluster_size.size):
                     cluster_info[i] = freq, i, cluster_size[i]
@@ -186,10 +199,10 @@ class ResultAnalysisManager:
             cluster_hdul.writeto(outlier_cluster_file_path, overwrite=True)
             return outlier_cluster_file_path
         else:
-            return outlier_file_path 
+            return outlier_file_path
 
-    def make_search_outlier(self, taskname, freq, mean2f_th, n_jobs, num_top_list=1000, 
-                            stage='search', freq_deriv_order=2, cluster=False, work_in_local_dir=False):
+    def make_search_outlier(self, taskname, freq, mean2f_th, n_jobs, num_toplist=1000, 
+                            stage='search', freq_deriv_order=2, cluster=False, work_in_local_dir=False, max_workers=16):
         """
         Public wrapper to write search results.
 
@@ -217,15 +230,18 @@ class ResultAnalysisManager:
 
         - workInLocalDir: bool, optional (default=False)
             If True, stores output files in the local directory. This option might be useful for local testing.
+
+        - max_worker: int 
+            The numer of threads being used in the analysis.
         """ 
         
-        outlier_file_path = self._make_search_outlier(taskname, freq, mean2f_th, n_jobs, num_top_list, 
-                                                      stage, freq_deriv_order, cluster, work_in_local_dir)
+        outlier_file_path = self._make_search_outlier(taskname, freq, mean2f_th, n_jobs, num_toplist, 
+                                                      stage, freq_deriv_order, cluster, work_in_local_dir, max_workers)
         print('Finish writing search result for {0} Hz'.format(freq))
         return outlier_file_path 
     
     def _make_search_outlier_from_saturated_band(self, taskname, freq, mean2f_th, job_index, 
-                                                 num_top_list_limit=1, stage='search', freq_deriv_order=2, work_in_local_dir=False):
+                                                 num_toplist=1, stage='search', freq_deriv_order=2, work_in_local_dir=False):
         """Writes results specifically for bands that were saturated in a previous pass."""      
         outlier_table_list = []
     
@@ -237,7 +253,7 @@ class ResultAnalysisManager:
             try:
                 weave_data = fits.getdata(weave_file_path, 1)
                 spacing = get_spacing(weave_file_path, freq_deriv_order)
-                _outlier = self.make_outlier_table(weave_data, spacing, mean2f_th, num_top_list_limit)  
+                _outlier = self.make_outlier_table(weave_data, spacing, mean2f_th, num_toplist)  
                 outlier_table_list.append(_outlier)
             except FileNotFoundError:
                 print(f"File missing for sat band job {idx}")
@@ -265,7 +281,7 @@ class ResultAnalysisManager:
         return outlier_file_path 
    
     def make_search_outlier_from_saturated_band(self, taskname, freq, mean2f_th, job_index, 
-                                                num_top_list=1, stage='search', freq_deriv_order=2, work_in_local_dir=False):
+                                                num_toplist=1, stage='search', freq_deriv_order=2, work_in_local_dir=False):
         """
         Public wrapper for saturated band results.
 
@@ -296,15 +312,15 @@ class ResultAnalysisManager:
         """ 
 
         outlier_file_path = self._make_search_outlier_from_saturated_band(taskname, freq, mean2f_th, job_index, 
-                                                                          num_top_list, stage, freq_deriv_order, work_in_local_dir)
+                                                                          num_toplist, stage, freq_deriv_order, work_in_local_dir)
         print('Finish writing search result for {0} Hz'.format(freq))
         return outlier_file_path
     
-# --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Injection & Follow-up Methods
     # --------------------------------------------------------------------------
 
-    def _make_injection_outlier(self, taskname, freq, mean2f_th, n_jobs, num_top_list_limit=1000, 
+    def _make_injection_outlier(self, taskname, freq, mean2f_th, n_jobs, num_toplist=1000, 
                                 stage='search', freq_deriv_order=2, cluster=False, work_in_local_dir=False):
         """Writes the injection results from the Weave output for a given frequency."""
         outlier_table_list = []
@@ -325,7 +341,7 @@ class ResultAnalysisManager:
                 spacing = get_spacing(weave_file_path, freq_deriv_order)
                 
                 # Filter outliers
-                _outlier = self.make_outlier_table(weave_data, spacing, mean2f_th, num_top_list_limit)  
+                _outlier = self.make_outlier_table(weave_data, spacing, mean2f_th, num_toplist)  
                 
                 # Match injections
                 _outlier, _inj_param = self.make_injection_table(inj_data, _outlier)
@@ -407,7 +423,7 @@ class ResultAnalysisManager:
             
         return outlier_file_path 
 
-    def make_injection_outlier(self, taskname, freq, mean2f_th, n_jobs, num_top_list=1000, 
+    def make_injection_outlier(self, taskname, freq, mean2f_th, n_jobs, num_toplist=1000, 
                                stage='search', freq_deriv_order=2, cluster=False, work_in_local_dir=False):
         """
         Public wrapper to write injection-search results.
@@ -432,12 +448,12 @@ class ResultAnalysisManager:
         - work_in_local_dir: bool, optional (default=False)
             If True, stores output files in the local directory.
         """
-        outlier_file_path = self._make_injection_outlier(taskname, freq, mean2f_th, n_jobs, num_top_list, 
+        outlier_file_path = self._make_injection_outlier(taskname, freq, mean2f_th, n_jobs, num_toplist, 
                                                          stage, freq_deriv_order, cluster, work_in_local_dir)
         print('Finish writing injection result for {0} Hz'.format(freq))
         return outlier_file_path
 
-    def _make_followup_outlier(self, taskname, freq, mean2f_th, n_jobs, num_top_list_limit=1000, 
+    def _make_followup_outlier(self, taskname, freq, mean2f_th, n_jobs, num_toplist=1000, 
                                stage='search', freq_deriv_order=2, 
                                cluster=False, work_in_local_dir=True, inj=False,
                                chunk_index=0, chunk_size=1):
@@ -452,7 +468,7 @@ class ResultAnalysisManager:
         end_job = chunk_index * chunk_size + n_jobs + 1
         
         # Iterate over each job in the chunk
-        for i, job_index in enumerate(range(start_job, end_job)):
+        for i, job_index in tqdm(enumerate(range(start_job, end_job)), total=n_jobs):
             weave_file_path = self.paths.weave_output_file(freq, taskname, job_index, stage)
             if work_in_local_dir:
                 weave_file_path = Path(weave_file_path).name
@@ -462,7 +478,7 @@ class ResultAnalysisManager:
                 spacing = get_spacing(weave_file_path, freq_deriv_order)
                 
                 # Note: mean2f_th is an array here, indexed by i
-                _outlier = self.make_outlier_table(weave_data, spacing, mean2f_th[i], num_top_list_limit)
+                _outlier = self.make_outlier_table(weave_data, spacing, mean2f_th[i], num_toplist)
                 
                 if inj:
                     inj_param = fits.getdata(weave_file_path, 2)
@@ -554,7 +570,7 @@ class ResultAnalysisManager:
             
         return outlier_file_path 
     
-    def make_followup_outlier(self, taskname, freq, mean2f_th, num_top_list=1000, 
+    def make_followup_outlier(self, taskname, freq, mean2f_th, num_toplist=1000, 
                               new_stage='followUp-1', new_freq_deriv_order=2, 
                               cluster=False, work_in_local_dir=True, inj=False,
                               chunk_index=0, chunk_size=1, chunk_count=None):
@@ -597,7 +613,7 @@ class ResultAnalysisManager:
             
         n_jobs = mean2f_th.size
         
-        outlier_file_path = self._make_followup_outlier(taskname, freq, mean2f_th, n_jobs, num_top_list, 
+        outlier_file_path = self._make_followup_outlier(taskname, freq, mean2f_th, n_jobs, num_toplist, 
                                                         new_stage, new_freq_deriv_order, 
                                                         cluster, work_in_local_dir, inj, 
                                                         chunk_index=chunk_index, chunk_size=chunk_size)
@@ -675,7 +691,7 @@ class ResultAnalysisManager:
         return outlier_file_path
 
     def ensemble_followup_result(self, freq, taskname, stage, inj_stage, outlier_file_path_list, inj_outlier_file_path_list, 
-                                 mean2f_ratio_list, num_top_list_to_follow_up_list,
+                                 mean2f_ratio_list, num_toplist_list,
                                  final_stage, cluster=False, work_in_local_dir=False):
         """Combines results from multiple follow-up stages into one summary FITS file."""
         n_inj_table = len(inj_outlier_file_path_list)
@@ -711,9 +727,9 @@ class ResultAnalysisManager:
                 primary_hdu.header[f'HIERARCH mean2F_ratio_{stage_name}'] = mean2f_ratio_list[i]
             
             # Check bounds for top list
-            if i < len(num_top_list_to_follow_up_list):
+            if i < len(num_toplist_list):
                 stage_name = stage[i+1] if (i+1) < len(stage) else f"stage_{i+1}"
-                primary_hdu.header[f'HIERARCH numTopList_{stage_name}'] = num_top_list_to_follow_up_list[i]
+                primary_hdu.header[f'HIERARCH numTopList_{stage_name}'] = num_toplist_list[i]
                 
         outlier_hdul.append(primary_hdu)
                  

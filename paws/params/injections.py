@@ -3,20 +3,14 @@ from astropy.io import fits
 from astropy.table import Table
 
 from paws.definitions import ext_param_name, phase_param_name
-from .models import f1_broad_range, f2_broad_range, f3_value, f4_value
 
 class InjectionParamGenerator:
-    def __init__(self, target, ref_time, f0_band=0.1):
-        self.target = target
+    def __init__(self, model, ref_time, f0_band=0.1):
+        self.model = model
         self.ref_time = ref_time
         self.f0_band = f0_band
         self.inj_col_names = ext_param_name()
 
-        self.tau = target['age'] * 86400 * 365.25  # Convert to seconds
-        self.alpha = target['alpha']
-        self.dalpha = target['dalpha']
-        self.delta = target['delta']
-        self.ddelta = target['ddelta']
 
     @staticmethod
     def sky_sampler(target_ra, target_dec, sky_uncertainty, n_samples):
@@ -75,7 +69,7 @@ class InjectionParamGenerator:
         f0 = selected_bands + np.random.uniform(0, self.f0_band, n_inj)
         return f0
 
-    def generate_injection_table(self, non_sat_bands, h0, n_inj, inj_freq_deriv_order, sky_uncertainty):
+    def generate_injection_table(self, alpha, delta, non_sat_bands, h0, n_inj, inj_freq_deriv_order, sky_uncertainty):
         """Generates the source injection parameters."""
         freq_params, _ = phase_param_name(inj_freq_deriv_order)
         
@@ -86,7 +80,7 @@ class InjectionParamGenerator:
         inj_data = Table(np.zeros((n_inj, len(col_names))), names=col_names)
 
         # 1. Sky Location
-        alpha, delta = self.sky_sampler(self.alpha, self.delta, sky_uncertainty, n_inj)
+        alpha, delta = self.sky_sampler(alpha, delta, sky_uncertainty, n_inj)
         inj_data['Alpha'] = alpha
         inj_data['Delta'] = delta
 
@@ -103,24 +97,24 @@ class InjectionParamGenerator:
         inj_data['Freq'] = f0
         
         if inj_freq_deriv_order >= 1:
-            f1_min, f1_max, _ = f1_broad_range(f0, 0, self.tau)
+            f1_min, f1_max, _ = self.model.f1_broad_range(f0, 0)
             f1 = np.random.uniform(f1_min, f1_max)
             inj_data['f1dot'] = f1
             
         if inj_freq_deriv_order >= 2:
-            f2_min, f2_max, _ = f2_broad_range(f0, 0, f1, f1)
+            f2_min, f2_max, _ = self.model.f2_broad_range(f0, 0, f1, f1)
             f2 = np.random.uniform(f2_min, f2_max)
             inj_data['f2dot'] = f2
         
         if inj_freq_deriv_order >= 3:
-            inj_data['f3dot'] = f3_value(f0, f1, f2)
+            inj_data['f3dot'] = self.model.f3_value(f0, f1, f2)
 
         if inj_freq_deriv_order >= 4:
-            inj_data['f4dot'] = f4_value(f0, f1, f2)
+            inj_data['f4dot'] = self.model.f4_value(f0, f1, f2)
             
         return fits.BinTableHDU(inj_data)
 
-    def generate_search_range_table(self, spacing, inj_data, freq_deriv_order, n_spacing=1):
+    def generate_search_range_table(self, alpha, dalpha, delta, ddelta, spacing, inj_data, freq_deriv_order, n_spacing=1):
         """
         Generates the small search windows around the injections for Weave.
         
@@ -164,15 +158,15 @@ class InjectionParamGenerator:
             search_range['df4dot'] = 2 * n_spacing * df4
 
         # 2. Sky
-        search_range['alpha'] = self.alpha
-        search_range['dalpha'] = self.dalpha
-        search_range['delta'] = self.delta
-        search_range['ddelta'] = self.ddelta
+        search_range['alpha'] = alpha
+        search_range['dalpha'] = dalpha
+        search_range['delta'] = delta
+        search_range['ddelta'] = ddelta
 
         return fits.BinTableHDU(search_range)
 
-    def generate_parameters(self, non_sat_bands, spacing, h0, freq, n_inj=1, n_spacing=1,
-                            inj_freq_deriv_order=4, freq_deriv_order=2, sky_uncertainty=0):
+    def generate_parameters(self, alpha, dalpha, delta, ddelta, non_sat_bands, spacing, h0, freq, n_inj=1, n_spacing=1,
+                            freq_deriv_order=2, inj_freq_deriv_order=4, sky_uncertainty=0):
         """
         High-level wrapper to generate both Injection Parameters and Search Ranges.
         
@@ -186,10 +180,10 @@ class InjectionParamGenerator:
             print('Error: Injection frequency derivative order larger than 4.')
             
         # 1. Generate Injection Table
-        ip_hdu = self.generate_injection_table(non_sat_bands, h0, n_inj, inj_freq_deriv_order, sky_uncertainty)
+        ip_hdu = self.generate_injection_table(alpha, delta, non_sat_bands, h0, n_inj, inj_freq_deriv_order, sky_uncertainty)
         
         # 2. Generate Search Range Table
-        sp_hdu = self.generate_search_range_table(spacing, ip_hdu.data, freq_deriv_order, n_spacing)
+        sp_hdu = self.generate_search_range_table(alpha, dalpha, delta, ddelta, spacing, ip_hdu.data, freq_deriv_order, n_spacing)
         
         injParamDict = {str(freq): ip_hdu}
         searchParamDict = {str(freq): sp_hdu}

@@ -37,18 +37,13 @@ class PathManager:
         # Prefer config definition, fallback to default if missing
         return self.config.get('executables', {}).get('weave', 
             '/cvmfs/software.igwn.org/conda/envs/igwn-py39-20231212/bin/lalpulsar_Weave')
-    
-    @property
-    def estimate_upper_limit_executable(self):
-        return self.config.get('executables', {}).get('estimate_uls',
-            '/cvmfs/software.igwn.org/conda/envs/igwn-py39-20231212/bin/lalpulsar_ComputeFstatMCUpperLimit')    
 
     @property
     def follow_up_executable(self):
-        return self.home_dir / 'scripts/followup.py'
+        return self.home_dir / 'scripts/follow_up.py'
 
     @property
-    def upper_limit_executable(self):
+    def upperlimit_executable(self):
         return self.home_dir / 'scripts/upperlimit.py'
     
     @property

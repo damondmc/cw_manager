@@ -38,18 +38,6 @@ class PathManager:
         return self.config.get('executables', {}).get('weave', 
             '/cvmfs/software.igwn.org/conda/envs/igwn-py39-20231212/bin/lalpulsar_Weave')
 
-    @property
-    def follow_up_executable(self):
-        return self.home_dir / 'scripts/follow_up.py'
-
-    @property
-    def upperlimit_executable(self):
-        return self.home_dir / 'scripts/upperlimit.py'
-    
-    @property
-    def analyze_result_executable(self):
-        return self.home_dir / 'scripts/analyze.py'
-
     # ---------------------------------------------------------
     # Input Data (SFTs)
     # ---------------------------------------------------------
@@ -98,10 +86,6 @@ class PathManager:
     def condor_sub_file(self, freq, taskname, stage):
         """Path to the .sub file."""
         return self.home_dir / 'condorFiles' / stage / self.target_name / str(freq) / f"{taskname}.sub"
-    
-    def submit_condor_sub_file(self, freq, stage):
-        """Path to the submit-wrapper .sub file."""
-        return self.home_dir / 'condorFiles' / stage / self.target_name / str(freq) / 'submit.sub'
 
     def condor_record_files(self, freq, taskname, stage):
         """
@@ -144,7 +128,3 @@ class PathManager:
             filename = f"{taskname}_outlier.fts"
             
         return base / filename
-
-    def outlier_from_saturated_file(self, freq, taskname, stage):
-        base = self.home_dir / 'results' / stage / self.target_name / self.sft_source / str(freq) / 'Outliers'
-        return base / f"{taskname}_loudest_outlier_from_saturated.fts"

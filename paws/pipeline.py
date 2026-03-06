@@ -15,7 +15,7 @@ def delete_files(result_file_list):
         Path(f).unlink(missing_ok=True)
     # print(f'Deleted {len(result_file_list)} weave result files.\n')
 
-def search_job(config, target, freq_deriv_order, n_seg, num_top_list, sft_files, metric_file, 
+def search_job(config, target, freq_deriv_order, n_seg, num_toplist, sft_files, metric_file, 
                extra_stats, weave_exe, search_data):
     """
     Worker function to run a single WEAVE search job.
@@ -23,56 +23,40 @@ def search_job(config, target, freq_deriv_order, n_seg, num_top_list, sft_files,
     result_file, param_row = search_data
     make_dir([result_file])
     
-    Path(result_file).unlink(missing_ok=True)
-  
+    if Path(result_file).exists():
+        return result_file
+    
+    # Construct command
     cmd_parts = [
-        str(weave_exe),
+        f"{weave_exe}",
         f"--output-file={result_file}",
-        f"--sft-files={sft_files}",
+        f"--sft-files=\"{sft_files}\"",
         f"--setup-file={metric_file}",
         f"--semi-max-mismatch={config['semi_mm']}",
-        f"--toplist-limit={num_top_list}",
+        f"--toplist-limit={num_toplist}",
         f"--extra-statistics={extra_stats}",
         f"--alpha={target['alpha']}",
         f"--delta={target['delta']}"
     ]
 
+    # Add coherence mismatch if the coherence time is not equal to the total observation time
     if n_seg > 1:
         cmd_parts.append(f"--coh-max-mismatch={config['coh_mm']}")
 
+    # Add frequency/derivative parameters
     freq_names, freq_deriv_names = phase_param_name(freq_deriv_order)
     for f_name, df_name in zip(freq_names, freq_deriv_names):
         val = param_row[f_name]
         dval = param_row[df_name]
         cmd_parts.append(f"--{f_name}={val}/{dval}")
 
-    # --- EXECUTE DIRECTLY ---
-    # shell=False: Arguments are passed directly. No shell is spawned.
-    # If weave_exe is not found, this line will raise FileNotFoundError immediately.
-    process = subprocess.run(
-        cmd_parts, 
-        shell=False, 
-        capture_output=True, 
-        text=True
-    )
+    command = " ".join(cmd_parts)
 
-    # --- CRASH DETECTION ---
-    if process.returncode != 0:
-        print(f"\n[CRITICAL] Job Crashed! Return Code: {process.returncode}")
-        print(f"File: {result_file}")
-        print(f"STDERR TAIL:\n{process.stderr[-1000:]}")
-        raise RuntimeError(f"WEAVE crashed with code {process.returncode}")
-
-    # --- MISSING FILE DETECTION ---
-    if not Path(result_file).exists():
-        print(f"\n[ERROR] Job finished successfully (0), but NO OUTPUT FILE: {result_file}")
-        print(f"STDOUT TAIL:\n{process.stdout[-1000:]}")
-        print(f"STDERR TAIL:\n{process.stderr[-1000:]}")
-        raise FileNotFoundError(f"WEAVE output missing: {result_file}")
-
+    # Run command
+    subprocess.run(command, shell=True, capture_output=True, text=True)
     return result_file
 
-def injection_job(config, target, freq_deriv_order, n_seg, num_top_list, sft_files, metric_file, 
+def injection_job(config, target, freq_deriv_order, n_seg, num_toplist, sft_files, metric_file, 
                   extra_stats, weave_exe, search_data, injection_data):
     """
     Worker function to run a single WEAVE injection job.
@@ -80,15 +64,17 @@ def injection_job(config, target, freq_deriv_order, n_seg, num_top_list, sft_fil
     result_file, param_row = search_data
     make_dir([result_file])
     
-    Path(result_file).unlink(missing_ok=True)
+    if Path(result_file).exists():
+        return result_file
     
+    # 1. Build Base Search Command
     cmd_parts = [
-        str(weave_exe),
+        f"{weave_exe}",
         f"--output-file={result_file}",
-        f"--sft-files={sft_files}",
+        f"--sft-files=\"{sft_files}\"",
         f"--setup-file={metric_file}",
         f"--semi-max-mismatch={config['semi_mm']}",
-        f"--toplist-limit={num_top_list}",
+        f"--toplist-limit={num_toplist}",
         f"--extra-statistics={extra_stats}",
         f"--alpha={target['alpha']}",
         f"--delta={target['delta']}"
@@ -103,6 +89,7 @@ def injection_job(config, target, freq_deriv_order, n_seg, num_top_list, sft_fil
         dval = param_row[df_name]
         cmd_parts.append(f"--{f_name}={val}/{dval}")
 
+    # 2. Build Injection String
     inj_str = (
         f"Alpha={injection_data['Alpha']};Delta={injection_data['Delta']};refTime={injection_data['refTime']};"
         f"aPlus={injection_data['aPlus']};aCross={injection_data['aCross']};psi={injection_data['psi']};"
@@ -110,33 +97,15 @@ def injection_job(config, target, freq_deriv_order, n_seg, num_top_list, sft_fil
         f"f3dot={injection_data['f3dot']};f4dot={injection_data['f4dot']}"
     )
     
-    # f-string formatting: {{{ }}} becomes { content }
-    cmd_parts.append(f'--injections={{{inj_str}}}')
+    cmd_parts.append(f'--injections=\"{{{inj_str}}}\"')
     
-    # --- EXECUTE DIRECTLY ---
-    process = subprocess.run(
-        cmd_parts, 
-        shell=False, 
-        capture_output=True, 
-        text=True
-    )
-
-    if process.returncode != 0:
-        print(f"\n[CRITICAL] Injection Job Crashed! Return Code: {process.returncode}")
-        print(f"File: {result_file}")
-        print(f"STDERR TAIL:\n{process.stderr[-1000:]}")
-        raise RuntimeError(f"WEAVE crashed with code {process.returncode}")
-
-    if not Path(result_file).exists():
-        print(f"\n[ERROR] Injection Job finished (0), but NO OUTPUT FILE: {result_file}")
-        print(f"STDOUT TAIL:\n{process.stdout[-1000:]}")
-        raise FileNotFoundError(f"WEAVE output missing: {result_file}")
-
+    command = " ".join(cmd_parts)
+    subprocess.run(command, shell=True, capture_output=True, text=True)
     return result_file
 
-def determine_efficiency(taskname, stage, config, target, freq, freq_deriv_order, n_seg, num_top_list, sft_files, metric_file, 
-                         extra_stats, weave_exe, search_data, injection_data, mean2f_th, n_cpu,
-                         cluster, work_in_local_dir, save_intermediate=False):
+def determine_efficiency(taskname, stage, config, target, freq, freq_deriv_order, n_seg, num_toplist, 
+                         sft_files, metric_file, extra_stats, weave_exe, search_data, injection_data, mean2f_th, 
+                         n_cpu, cluster, work_in_local_dir, save_intermediate=False):
     """
     Runs injections in parallel and calculates detection efficiency.
     """
@@ -158,16 +127,15 @@ def determine_efficiency(taskname, stage, config, target, freq, freq_deriv_order
     # Run Parallel Jobs
     with Pool(processes=n_cpu) as pool:
         results = pool.starmap(injection_job, [
-            (config, target, freq_deriv_order, n_seg, num_top_list, sft_files, metric_file, 
+            (config, target, freq_deriv_order, n_seg, num_toplist, sft_files, metric_file, 
              extra_stats, weave_exe, jd, inj) 
             for jd, inj in zip(job_data, injection_data)
         ])
 
     # Analysis    
-    # Delegate writing results to ResultManager
     n_inj = injection_data.size
     outlier_file_path = result_manager.make_injection_outlier(
-        taskname, freq, mean2f_th, n_inj, num_top_list=num_top_list, 
+        taskname, freq, mean2f_th, n_inj, num_toplist=num_toplist, 
         stage=stage, freq_deriv_order=freq_deriv_order, 
         cluster=cluster, work_in_local_dir=work_in_local_dir
     )
@@ -178,7 +146,7 @@ def determine_efficiency(taskname, stage, config, target, freq, freq_deriv_order
     # Calculate Efficiency
     n_outlier = fits.getdata(outlier_file_path, 1).size
     eff = n_outlier / n_inj
-    print(f'{eff*100:.2f}% ({n_outlier}/{n_inj}) above mean2F threshold. Saved to {outlier_file_path}.')
+    print(f'{eff * 100:.2f}% ({n_outlier}/{n_inj}) above mean2F threshold. \nSaved to {outlier_file_path}.')
     
     return eff, outlier_file_path
 
@@ -271,68 +239,100 @@ def determine_efficiency(taskname, stage, config, target, freq, freq_deriv_order
     
 #     return outlier_file_path, inj_result_file_list
 
-def chunked_iterable(iterable, size):
-    it = iter(iterable)
-    while True:
-        chunk = list(islice(it, size))
-        if not chunk:
-            break
-        yield chunk
+# def chunked_iterable(iterable, size):
+#     it = iter(iterable)
+#     while True:
+#         chunk = list(islice(it, size))
+#         if not chunk:
+#             break
+#         yield chunk
 
-# def search_job(config, target, freq_deriv_order, n_seg, num_top_list, sft_files, metric_file, 
-#                extra_stats, weave_exe, search_data):
+# def real_followup(paths, config, sp, target, obs_day, freq, sft_files, 
+#                   old_mean2F, mean2F_ratio, 
+#                   new_coh_day, new_freq_deriv_order, new_stage, 
+#                   num_top_list, extra_stats, num_cpus, 
+#                   result_manager, cluster=False, work_in_local_dir=False, 
+#                   save_intermediate=False):
+#     """
+#     Executes the 'real' (non-injection) follow-up stage.
+#     """
+#     print('Doing real follow-up...')
+     
+#     # 1. Setup Paths
+#     t_name = task_name(target['name'], new_stage, new_coh_day, new_freq_deriv_order, freq)
+#     metric_file = paths.weave_setup_file_from_param(obs_day, new_coh_day, new_freq_deriv_order)
     
+#     if work_in_local_dir:  
+#         metric_file = Path(metric_file).name
 
-# def determine_efficiency(taskname, stage, config, target, freq, freq_deriv_order, n_seg, num_top_list, sft_files, metric_file, 
-#                          extra_stats, weave_exe, search_data, injection_data, mean2f_th, n_cpu,
-#                          cluster, work_in_local_dir, save_intermediate=False):
-
-
-def real_followup(taskname, stage, config, target, freq, freq_deriv_order, n_seg, num_top_list, sft_files, metric_file, 
-                  extra_stats, weave_exe, search_data, mean2f_th, n_cpu,
-                  cluster, work_in_local_dir, save_intermediate=False):
-
-    """
-    Executes the 'real' (non-injection) follow-up stage.
-    """
-    print('Doing real follow-up...')
+#     # 2. Prepare Job Parameters
+#     if work_in_local_dir:
+#         search_params = [
+#             (Path(paths.weave_output_file(freq, t_name, i, new_stage)).name, p) 
+#             for i, p in enumerate(sp[str(freq)].data, 1)
+#         ]
+#     else:
+#         search_params = [
+#             (str(paths.weave_output_file(freq, t_name, i, new_stage)), p) 
+#             for i, p in enumerate(sp[str(freq)].data, 1)
+#         ]
+       
+#     # 3. Setup Chunking
+#     chunk_size = 100  
+#     total_job_counts = len(search_params)
+#     chunk_count = int(np.ceil(total_job_counts / chunk_size))
+#     weave_exe = str(paths.weave_executable)
+#     n_seg = int(obs_day / new_coh_day) if new_coh_day > 0 else 1
     
-    paths = PathManager(config=config, target=target)
-    result_manager = ResultAnalysisManager(config=config, target=target)
+#     outlier_file_path = None
 
-    # Prepare File Paths
-    if work_in_local_dir:
-        job_data = [
-            (Path(paths.weave_output_file(freq, taskname, i, stage)).name, p) 
-            for i, p in enumerate(search_data, 1)
-        ]
-    else:
-        job_data = [
-            (str(paths.weave_output_file(freq, taskname, i, stage)), p) 
-            for i, p in enumerate(search_data, 1)
-        ]
+#     print("Generated params, running Weave...")
     
-    # Run Parallel Jobs
-    with Pool(processes=n_cpu) as pool:
-        results = pool.starmap(search_job, [
-            (config, target, freq_deriv_order, n_seg, num_top_list, sft_files, metric_file, 
-             extra_stats, weave_exe, jd) 
-            for jd in job_data
-        ])
+#     # 4. Process Chunks
+#     with Pool(processes=num_cpus) as pool:
+        
+#         for chunk_index, chunk in enumerate(chunked_iterable(search_params, chunk_size)):
+#             print(f"Processing chunk {chunk_index + 1} out of {chunk_count}...")
+            
+#             # Run Search Jobs in Parallel
+#             # Tuple must match search_job signature:
+#             # (target, config, freq_deriv_order, n_seg, params, num_top_list, sft_files, metric_file, extra_stats, weave_exe)
+#             results = pool.starmap(search_job, [
+#                 (target, config, new_freq_deriv_order, n_seg, params, num_top_list, sft_files, metric_file, 
+#                  extra_stats, weave_exe)
+#                 for params in chunk
+#             ])
+            
+#             # Analyze Results Immediately
+#             if chunk_count == 1:
+#                 outlier_file_path = result_manager.write_follow_up_result(
+#                     old_mean2F, new_coh_day, freq, num_top_list=num_top_list, 
+#                     new_stage=new_stage, new_freq_deriv_order=new_freq_deriv_order, 
+#                     ratio=mean2F_ratio, work_in_local_dir=work_in_local_dir, 
+#                     inj=False, cluster=cluster
+#                 )
+#             else:
+#                 outlier_file_path = result_manager.write_follow_up_result(
+#                     old_mean2F, new_coh_day, freq, num_top_list=num_top_list, 
+#                     new_stage=new_stage, new_freq_deriv_order=new_freq_deriv_order, 
+#                     ratio=mean2F_ratio, work_in_local_dir=work_in_local_dir, 
+#                     inj=False, cluster=cluster,
+#                     chunk_count=chunk_count, chunk_index=chunk_index, chunk_size=chunk_size
+#                 )
+   
+#             # Cleanup Disk Space
+#             if not save_intermediate:
+#                 delete_files(results)
 
-    # Analysis    
-    # Delegate writing results to ResultManager
-    outlier_file_path = result_manager.make_followup_outlier(
-        taskname, freq, mean2f_th, num_top_list=num_top_list, 
-        new_stage=stage, new_freq_deriv_order=freq_deriv_order, 
-        cluster=cluster, work_in_local_dir=work_in_local_dir
-    )
-
-
-    if not save_intermediate:
-        delete_files(results)
-
-    return outlier_file_path
+#     # 5. Final Aggregation
+#     if chunk_count != 1:
+#         outlier_file_path = result_manager.ensemble_outlier_chunk(
+#             total_job_counts, chunk_size, chunk_count, 
+#             new_coh_day, freq, new_stage, new_freq_deriv_order, 
+#             cluster, work_in_local_dir
+#         )
+            
+#     return outlier_file_path
 
 # def determine_mean2f_ratio(percentile, paths, target, freq, 
 #                            old_coh_day, old_freq_deriv_order, old_stage, 

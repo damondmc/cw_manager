@@ -261,7 +261,7 @@ class ResultAnalysisManager:
         # 5. Clustering via central engine
         if cluster and out_hdu.data is not None:
             primary_hdu.header['HIERARCH cluster_n_spacing'] = self.config.get('cluster_n_spacing', 1)
-            self._write_clustered_results(
+            outlier_file_path = self._write_clustered_results(
                 freq, taskname, stage, out_hdu.data, freq_deriv_order, 
                 primary_hdu, inj_hdu=None, non_sat_hdu=non_sat_hdu,
                 work_in_local_dir=work_in_local_dir
@@ -362,7 +362,7 @@ class ResultAnalysisManager:
         
         if cluster and out_hdu.data is not None:
             primary_hdu.header['HIERARCH cluster_n_spacing'] = self.config.get('cluster_n_spacing', 1)
-            self._write_clustered_results(
+            outlier_file_path = self._write_clustered_results(
                 freq, taskname, stage, out_hdu.data, freq_deriv_order, 
                 primary_hdu, inj_hdu=inj_hdu,
                 work_in_local_dir=work_in_local_dir
@@ -425,7 +425,7 @@ class ResultAnalysisManager:
         
         if cluster and out_hdu.data is not None:
             primary_hdu.header['HIERARCH cluster_n_spacing'] = self.config.get('cluster_n_spacing', 1)
-            self._write_clustered_results(
+            outlier_file_path = self._write_clustered_results(
                 freq, taskname, stage, out_hdu.data, freq_deriv_order, 
                 primary_hdu, inj_hdu=None, 
                 work_in_local_dir=work_in_local_dir

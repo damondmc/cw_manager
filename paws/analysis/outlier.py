@@ -89,7 +89,7 @@ class ResultAnalysisManager:
                 # Handle injections
                 _inj_param = None
                 if read_inj and _outlier is not None:
-                    inj_data = fits.getdata(file_path, extname='injection_info')
+                    inj_data = fits.getdata(file_path, 2)
                     _outlier, _inj_param = self.make_injection_table(inj_data, _outlier)
                     
                 return (i, job_idx, _outlier, _inj_param, spacing, is_sat)

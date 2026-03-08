@@ -110,12 +110,15 @@ class SigmoidFitter:
         ax.errorbar(h0_list, p_list, yerr=err, fmt='o', label='Injection Data', color='k', zorder=2)
 
         # Highlight h95
-        h95, h95_rel_err = self.get_h_percentile(0.95)
+        h95, dh95 = self.get_h_percentile(0.95)
         ax.axhline(0.95, color='r', linestyle='--', alpha=0.5)
         ax.axvline(h95, color='r', linestyle='--', alpha=0.5)
-        
-        label_text = r'$h_{95} = ' + f'{h95:.3e}' + r' \pm ' + f'{h95_rel_err*100:.1f}\% $'
-        ax.plot([], [], ' ', label=label_text) # Dummy entry for legend
+
+
+        h95_exp = int(np.floor(np.log10(h95)))
+        h95_mantissa = h95 / (10**h95_exp)
+        label_text = rf'$h_{{95}} = {h95_mantissa:.2f} \times 10^{{{h95_exp}}} \pm {dh95/h95*100:.1f}\%$'
+        ax.plot([], [], ' ', label=label_text) 
 
         ax.set_xlabel(r'Strain Amplitude $h_0$', fontsize=14)
         ax.set_ylabel(r'Detection Efficiency $p_{\mathrm{det}}$', fontsize=14)

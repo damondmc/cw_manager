@@ -114,7 +114,6 @@ class SigmoidFitter:
         ax.axhline(0.95, color='r', linestyle='--', alpha=0.5)
         ax.axvline(h95, color='r', linestyle='--', alpha=0.5)
 
-
         h95_exp = int(np.floor(np.log10(h95)))
         h95_mantissa = h95 / (10**h95_exp)
         label_text = rf'$h_{{95}} = {h95_mantissa:.2f} \times 10^{{{h95_exp}}} \pm {dh95/h95*100:.1f}\%$'

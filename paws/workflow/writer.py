@@ -34,7 +34,7 @@ def write_search_subfile(filename, executable_path, transfer_executable, output_
         subfile.write('request_memory = {0}\n'.format(request_memory)) 
         subfile.write('request_disk = {0}\n'.format(request_disk))   
         subfile.write('request_cpus = {0}\n'.format(request_cpu))
-        subfile.write('getenv = True\n')
+        subfile.write('getenv = False\n')
         
         subfile.write('accounting_group = {0}\n'.format(accounting_group))
         subfile.write('accounting_group_user = {0}\n\n'.format(user))

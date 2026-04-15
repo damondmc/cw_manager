@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from .writer import write_search_subfile, write_search_dagfile
 from paws.io import make_dir
-from paws.definitions import phase_param_name, task_name
+from paws.definitions import phase_param_name, task_name, ext_param_name
 from paws.filepaths import PathManager
 
 class WorkflowManager:
@@ -50,7 +50,11 @@ class WorkflowManager:
             
         return kwargs
 
-    def _get_weave_arg_string(self, n_seg): 
+    def _format_injection_str(self, colnames, inj_param):
+        """Formats injection parameters into a semicolon-separated string."""
+        return ";".join([f"{col}={inj_param[col]}" for col in colnames])
+
+    def _get_weave_arg_string(self, n_seg, is_injection=False): 
         """Generates the Submit file argument template using Condor $(VAR) syntax."""
         arg_keys = [
             "output-file", "sft-files", "setup-file", 
@@ -69,9 +73,13 @@ class WorkflowManager:
         for key1, key2 in zip(self.freq_param_names, self.freq_deriv_param_names):
             template_parts.append(f"--{key1}=$({key1.upper()})/$({key2.upper()})")
         
+        # Add injection variable if requested
+        if is_injection:
+            template_parts.append("--injections=$(INJECTIONS)")
+            
         return " ".join(template_parts) + " "
 
-    def _search_dag_args(self, freq, stage, params, taskname, n_seg, sft_files, job_index, use_osg, metric_file):
+    def _search_dag_args(self, freq, stage, params, taskname, n_seg, sft_files, job_index, use_osg, metric_file, inj_param_str=None):
         """Generates the argument string (VARS) for a specific Search DAG node."""
         result_file = self.paths.weave_output_file(freq, taskname, job_index, stage)
         make_dir([result_file])
@@ -94,6 +102,10 @@ class WorkflowManager:
         
             for key1, key2 in zip(self.freq_param_names, self.freq_deriv_param_names): 
                 cmd_parts.append(f"--{key1}={params[key1]}/{params[key2]}")
+                
+            # Add formatted injection string for local execution
+            if inj_param_str:
+                cmd_parts.append(f'--injections={{{inj_param_str}}}')
             
             arg_list = f'argList= "{" ".join(cmd_parts)} "'
 
@@ -120,6 +132,10 @@ class WorkflowManager:
             for key1, key2 in zip(self.freq_param_names, self.freq_deriv_param_names): 
                 args.append(f'{key1.upper()}="{params[key1]}"')
                 args.append(f'{key2.upper()}="{params[key2]}"')
+                
+            # Add formatted injection string for OSG execution
+            if inj_param_str:
+                args.append(f'INJECTIONS="{{{inj_param_str}}}"')
             
             arg_list = " ".join(args) + " "
                 
@@ -127,18 +143,33 @@ class WorkflowManager:
 
     def make_search_dag(self, taskname, freq, params, num_top_list, stage, freq_deriv_order, n_seg,
                         sft_files, metric_file, request_memory='18GB', request_disk='5GB', request_cpu=1, 
-                        use_osg=False, use_osdf=False, exe=None, image=None):
+                        use_osg=False, use_osdf=False, exe=None, image=None,
+                        inj_params=None, inj_freq_deriv_order=None):
         """
         Creates the DAG and SUB files for the Search stage (Weave).
+        If inj_params and inj_freq_deriv_order are provided, it automatically configures for Injections.
         """
         t0 = time.time()
-        print(f"Generating SEARCH DAG for {taskname}...")
+
+        # Determine if we are doing an Injection run
+        is_injection = inj_params is not None and inj_freq_deriv_order is not None
+        if is_injections:    
+            print(f"Generating SEARCH DAG for {taskname} with injections...")
+        else:
+            print(f"Generating SEARCH DAG for {taskname}...")
 
         if use_osdf and not use_osg:
             print('Warning: SFTs from OSDF requested but not using OSG resources.')
 
         self.freq_param_names, self.freq_deriv_param_names = phase_param_name(freq_deriv_order)
         self.num_top_list = num_top_list
+
+        # Build injection column names if needed
+        inj_colnames = None
+        if is_injection:
+            inj_freq_names, _ = phase_param_name(inj_freq_deriv_order)
+            # Combine external params + "Freq" + remaining freq derivatives (f1dot, etc.)
+            inj_colnames = ext_param_name() + ["Freq"] + inj_freq_names[1:]
             
         dag_file_path = self.paths.dag_file(freq, taskname, stage)
         dag_file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -147,7 +178,7 @@ class WorkflowManager:
         cr_files = self.paths.condor_record_files(freq, taskname, stage)
         make_dir(cr_files)
 
-        arg_string = self._get_weave_arg_string(n_seg)
+        arg_string = self._get_weave_arg_string(n_seg, is_injection=is_injection)
         exe = exe if exe else self.paths.weave_executable
         
         sub_file_path = self.paths.condor_sub_file(freq, taskname, stage)
@@ -161,10 +192,22 @@ class WorkflowManager:
             request_memory=request_memory, request_disk=request_disk, request_cpu=request_cpu,
             use_osg=use_osg, use_osdf=use_osdf, image=image
         )   
-    
-        for job_index, params in tqdm(enumerate(params, 1), total=params.size):
+        
+        # Zip variables if injection, else just iterate params
+        job_iterator = zip(params, inj_params) if is_injection else params
+        
+        for job_index, job_data in tqdm(enumerate(job_iterator, 1), total=len(params)):
+            
+            # Unpack differently based on the mode
+            if is_injection:
+                search_param, inj_param = job_data
+                inj_str = self._format_injection_str(inj_colnames, inj_param)
+            else:
+                search_param = job_data
+                inj_str = None
+                
             arg_list = self._search_dag_args(
-                freq, stage, params, taskname, n_seg, sft_files, job_index, use_osg, metric_file
+                freq, stage, search_param, taskname, n_seg, sft_files, job_index, use_osg, metric_file, inj_param_str=inj_str
             )
             write_search_dagfile(str(dag_file_path), taskname, str(sub_file_path), job_index, arg_list)
 

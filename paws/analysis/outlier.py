@@ -57,8 +57,7 @@ class ResultAnalysisManager:
 
     def _collect_outlier_data(self, taskname, freq, stage, job_indices, mean2f_th, 
                               num_toplist, freq_deriv_order, work_in_local_dir, 
-                              max_workers, read_inj=False, check_saturation=False, 
-                              separate_saturated=False, desc="Processing"):
+                              max_workers, read_inj=False, separate_saturated=False, desc="Processing"):
         """Central engine for multithreaded FITS reading and outlier filtering."""
         # 1. Handle scalar vs array thresholds
         if np.isscalar(mean2f_th):
@@ -84,8 +83,8 @@ class ResultAnalysisManager:
                 spacing = get_spacing(file_path, freq_deriv_order)
 
                 _outlier = self.make_outlier_table(weave_data, th, num_toplist)
-                is_sat = 1 if len(_outlier) >= num_toplist else 0
-                
+                is_sat = int(len(_outlier) >= num_toplist and not read_inj)
+
                 # Handle injections
                 _inj_param = None
                 if read_inj and _outlier is not None:
@@ -94,6 +93,7 @@ class ResultAnalysisManager:
                     
                 return (i, job_idx, _outlier, _inj_param, spacing, is_sat)
             except FileNotFoundError:
+                print(f"Error: {file_path}")
                 return (i, job_idx, None, None, None, 0)
 
         # 3. Multithreading Queue
@@ -113,7 +113,7 @@ class ResultAnalysisManager:
                     sat_outlier_table_list.append(_outlier[:1]) # Keep ONLY the loudest 1
                 else:
                     outlier_table_list.append(_outlier)
-                    
+                
                 if _inj_param is not None and len(_outlier) > 0:
                     inj_table_list.append(_inj_param)
                 
@@ -210,7 +210,7 @@ class ResultAnalysisManager:
         normal_outliers, sat_outliers, _, info_list, max_spacing = self._collect_outlier_data(
             taskname, freq, stage, job_indices, mean2f_th, num_toplist, 
             freq_deriv_order, work_in_local_dir, max_workers, 
-            read_inj=False, separate_saturated=True, desc="Search"
+            read_inj=False, separate_saturated=separate_saturated, desc="Search"
         )
 
         # 1. Build Info Array (NOW WITH 4 COLUMNS)
@@ -325,7 +325,6 @@ class ResultAnalysisManager:
             freq_deriv_order, work_in_local_dir, max_workers, 
             read_inj=True, separate_saturated=separate_saturated, desc="Injection"
         )
-        
         info_data = np.recarray((n_jobs,), dtype=[(key, '>f8') for key in ['freq', 'jobIndex', 'outliers', 'isSaturated']])
         for i, (f, j, o, s) in enumerate(info_list):
             info_data[i] = (f, j, o, s)
@@ -336,7 +335,7 @@ class ResultAnalysisManager:
         if max_spacing:
             for key, val in max_spacing.items():
                 primary_hdu.header[f'HIERARCH {key}'] = val
-            
+        
         if outliers:
             out_hdu = fits.BinTableHDU(data=vstack(outliers), name=stage+'_outlier')
         else:
@@ -346,11 +345,11 @@ class ResultAnalysisManager:
         
         # Build Injection HDU
         if inj_data_list:
-            inj_hdu = fits.BinTableHDU(data=vstack(inj_data_list), name='injection_info')
+            inj_hdu = fits.BinTableHDU(data=vstack(inj_data_list), name='injection')
         else:
-            inj_hdu = fits.BinTableHDU(name='injection_info')
+            inj_hdu = fits.BinTableHDU(name='injection')
 
-        # Assemble FITS with 4 HDUs (including injection_info)
+        # Assemble FITS with 4 HDUs (including injection)
         outlier_hdul = fits.HDUList([primary_hdu, out_hdu, inj_hdu, info_hdu])
         
         outlier_file_path = self.paths.outlier_file(freq, taskname, stage, cluster=False)

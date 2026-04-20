@@ -18,7 +18,7 @@ class FollowUpParamGenerator():
         self.nc_min = nc_min
         self.nc_max = nc_max
     
-    def make_follow_up_table(self, data, old_freq_deriv_order, new_freq_deriv_order, n_spacing): 
+    def generate_parameter_table(self, data, old_freq_deriv_order, new_freq_deriv_order, spacing, n_spacing): 
         """
         Constructs the follow-up parameter table by expanding ranges.
         
@@ -26,6 +26,7 @@ class FollowUpParamGenerator():
         - data (numpy.array): Input outlier data.
         - old_freq_deriv_order (int): The derivative order of the previous search.
         - new_freq_deriv_order (int): The derivative order for the new search.
+        - spacing (float): The spacing between parameter values.
         - n_spacing (int): The spacing multiplier for expanding ranges.
 
         Returns:
@@ -36,6 +37,12 @@ class FollowUpParamGenerator():
         # Check if there are outliers 
         if len(data) == 0:
             return fits.BinTableHDU(data=data)        
+
+        if 'dalpha' not in data.colnames:
+            data['dalpha'] = self.target['dalpha']
+            
+        if 'ddelta' not in data.colnames:
+            data['ddelta'] = self.target['ddelta']
         
         # Get parameter names from utils
         freq_param_names, freq_deriv_param_names = phase_param_name(old_freq_deriv_order)
@@ -45,8 +52,8 @@ class FollowUpParamGenerator():
         # Logic: New Start = Old Value - (nSpacing * StepSize)
         #        New Bandwidth = 2 * nSpacing * StepSize
         for freq_name, freq_deriv_name in zip(freq_param_names, freq_deriv_param_names):
-            data[freq_name] = data[freq_name] - n_spacing * data[freq_deriv_name] 
-            data[freq_deriv_name] = 2 * n_spacing * data[freq_deriv_name] 
+            data[freq_name] = data[freq_name] - n_spacing * spacing[freq_deriv_name] 
+            data[freq_deriv_name] = 2 * n_spacing * spacing[freq_deriv_name] 
             
             # Remove processed params from the "new" list so we know what's left to add
             if freq_name in new_freq_param_names:
@@ -60,9 +67,9 @@ class FollowUpParamGenerator():
                 # Calculate broad ranges based on current f1/f2 values
                 f3_min, _, f3_band = fr.f3_broad_range(
                     data['freq'], 
-                    data['df'], 
+                    spacing['df'], 
                     data['f1dot'], 
-                    data['f1dot'] + data['df1dot'],
+                    data['f1dot'] + spacing['df1dot'],
                     nc_min=self.nc_min,
                     nc_max=self.nc_max
                 )
@@ -72,9 +79,9 @@ class FollowUpParamGenerator():
             elif freq_name == 'f4dot':
                 f4_min, _, f4_band = fr.f4_broad_range(
                     data['freq'], 
-                    data['df'], 
+                    spacing['df'], 
                     data['f1dot'], 
-                    data['f1dot'] + data['df1dot'],
+                    data['f1dot'] + spacing['df1dot'],
                     nc_min=self.nc_min,
                     nc_max=self.nc_max
                 )
@@ -83,7 +90,7 @@ class FollowUpParamGenerator():
                 
         return fits.BinTableHDU(data=data)
            
-    def gen_follow_up_param(self, data, old_freq_deriv_order, new_freq_deriv_order, n_spacing=1): 
+    def generate_parameter(self, data, old_freq_deriv_order, new_freq_deriv_order, spacing, n_spacing=1): 
         """
         Main entry point to generate parameters.
         """
@@ -92,7 +99,7 @@ class FollowUpParamGenerator():
             # You might want to raise an actual Exception here:
             # raise ValueError("Frequency derivative order cannot be larger than 4")
              
-        params = self.make_follow_up_table(data, old_freq_deriv_order, new_freq_deriv_order, n_spacing)
+        params = self.generate_parameter_table(data, old_freq_deriv_order, new_freq_deriv_order, spacing, n_spacing)
         
         # Removed unused args: cluster, workInLocalDir are not used in logic anymore
         print(f"Done generation of {self.target['name']} follow-up parameters\n")

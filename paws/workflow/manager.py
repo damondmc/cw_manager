@@ -153,7 +153,7 @@ class WorkflowManager:
 
         # Determine if we are doing an Injection run
         is_injection = inj_params is not None and inj_freq_deriv_order is not None
-        if is_injections:    
+        if is_injection:    
             print(f"Generating SEARCH DAG for {taskname} with injections...")
         else:
             print(f"Generating SEARCH DAG for {taskname}...")

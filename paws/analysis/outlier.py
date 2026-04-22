@@ -73,7 +73,7 @@ class ResultAnalysisManager:
         
         # 2. Universal Worker Function
         def _worker(args):
-            i, job_idx, th = args
+            i, job_idx, th, worker_read_inj = args
             file_path = self.paths.weave_output_file(freq, taskname, job_idx, stage)
             if work_in_local_dir:
                 file_path = Path(file_path).name
@@ -83,21 +83,20 @@ class ResultAnalysisManager:
                 spacing = get_spacing(file_path, freq_deriv_order)
 
                 _outlier = self.make_outlier_table(weave_data, th, num_toplist)
-                is_sat = int(len(_outlier) >= num_toplist and not read_inj)
+                is_sat = int(len(_outlier) >= num_toplist)
 
                 # Handle injections
                 _inj_param = None
-                if read_inj and _outlier is not None:
+                if worker_read_inj and _outlier is not None:
                     inj_data = fits.getdata(file_path, 2)
                     _outlier, _inj_param = self.make_injection_table(inj_data, _outlier)
                     
                 return (i, job_idx, _outlier, _inj_param, spacing, is_sat)
             except FileNotFoundError:
-                print(f"Error: {file_path}")
                 return (i, job_idx, None, None, None, 0)
 
         # 3. Multithreading Queue
-        job_args = list(zip(range(len(job_indices)), job_indices, thresholds))
+        job_args = [(i, idx, th, read_inj) for i, idx, th in zip(range(len(job_indices)), job_indices, thresholds)]
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             results = list(tqdm(executor.map(_worker, job_args), total=len(job_args), desc=f"{desc} {freq}Hz"))
             
@@ -130,7 +129,7 @@ class ResultAnalysisManager:
                 
         if missing_files > 0:
             print(f"Warning: {missing_files} files missing for {desc} {freq}Hz")
-            
+
         return outlier_table_list, sat_outlier_table_list, inj_table_list, info_list, max_spacing
     
     def _write_clustered_results(self, freq, taskname, stage, outlier_data, freq_deriv_order, 
@@ -201,330 +200,187 @@ class ResultAnalysisManager:
         cluster_hdul.writeto(outlier_file_path, overwrite=True)
         return outlier_file_path
 
-    def _make_search_outlier(self, taskname, freq, mean2f_th, n_jobs, num_toplist=1000, 
-                             stage='search', freq_deriv_order=2, cluster=False, 
-                             work_in_local_dir=False, separate_saturated=True, max_workers=32):
-        
-        job_indices = list(range(1, n_jobs + 1))
-        
-        normal_outliers, sat_outliers, _, info_list, max_spacing = self._collect_outlier_data(
-            taskname, freq, stage, job_indices, mean2f_th, num_toplist, 
-            freq_deriv_order, work_in_local_dir, max_workers, 
-            read_inj=False, separate_saturated=separate_saturated, desc="Search"
-        )
-
-        # 1. Build Info Array (NOW WITH 4 COLUMNS)
-        info_data = np.recarray((n_jobs,), dtype=[(key, '>f8') for key in ['freq', 'jobIndex', 'outliers', 'isSaturated']])
-        for i, (f, j, o, s) in enumerate(info_list):
-            info_data[i] = (f, j, o, s)
-            
-        # 2. Build Non-Saturated Band Array
-        f0_band = self.config['f0_band']
-        sat = info_data['isSaturated'].reshape(int(1. / f0_band), int(n_jobs * f0_band))  
-
-        idx = np.where(~sat.any(axis=1))[0]
-        
-        non_sat_data = np.recarray((len(idx),), dtype=[('non_sat_band', '>f8')])
-        
-        non_sat_data['non_sat_band'] = int(freq) + idx * f0_band
-            
-        # 3. Create HDUs
-        primary_hdu = fits.PrimaryHDU()
-        primary_hdu.header['HIERARCH mean2F_th'] = mean2f_th    
-
-        if max_spacing:
-            for key, val in max_spacing.items():
-                primary_hdu.header[f'HIERARCH {key}'] = val    
-            
-        if normal_outliers:
-            out_hdu = fits.BinTableHDU(data=vstack(normal_outliers), name=stage+'_outlier')
-        else:
-            out_hdu = fits.BinTableHDU(name=stage+'_outlier')
-
-        if sat_outliers:
-            sat_hdu = fits.BinTableHDU(data=vstack(sat_outliers), name=stage+'_sat_outlier')
-        else:
-            sat_hdu = fits.BinTableHDU(name=stage+'_sat_outlier')
-            
-        info_hdu = fits.BinTableHDU(data=info_data, name='info') 
-        non_sat_hdu = fits.BinTableHDU(data=non_sat_data, name='non_sat_band')
-
-        # 4. Assemble FITS with 5 HDUs
-        outlier_hdul = fits.HDUList([primary_hdu, out_hdu, sat_hdu, info_hdu, non_sat_hdu])
-        outlier_file_path = self.paths.outlier_file(freq, taskname, stage, cluster=False)
-        if work_in_local_dir:
-            outlier_file_path = Path(outlier_file_path).name
-            
-        make_dir([outlier_file_path])
-        outlier_hdul.writeto(outlier_file_path, overwrite=True)  
-        
-        # 5. Clustering via central engine
-        if cluster and out_hdu.data is not None:
-            primary_hdu.header['HIERARCH cluster_n_spacing'] = self.config.get('cluster_n_spacing', 1)
-            outlier_file_path = self._write_clustered_results(
-                freq, taskname, stage, out_hdu.data, freq_deriv_order, 
-                primary_hdu, inj_hdu=None, non_sat_hdu=non_sat_hdu,
-                work_in_local_dir=work_in_local_dir
-            )
-            
-        return outlier_file_path
-
-    def make_search_outlier(self, taskname, freq, mean2f_th, n_jobs, num_toplist=1000, 
-                            stage='search', freq_deriv_order=2, cluster=False, 
-                            work_in_local_dir=False, separate_saturated=True, max_workers=16):
+    def make_outlier(self, taskname, freq, mean2f_th, n_jobs, num_toplist=1000, 
+                     stage='search', freq_deriv_order=2, cluster=False, 
+                     work_in_local_dir=False, separate_saturated=False, 
+                     is_injection=False, max_workers=32):
         """
-        Public wrapper to write search results.
+        Unified engine to collect results and write FITS files for Search, Injection, or Follow-up.
+        """
+        # 1. Saturation Warning
+        if 'search' in stage.lower() and not separate_saturated:
+            print(f"Warning: '{stage}' appears to be a search stage, but separate_saturated is False. "
+                  "Saturated bands will NOT be separated.")
 
-        Parameters:
-        - taskname: str
-            The name of the task for the search, used in naming and organizing output files.
+        if is_injection and separate_saturated:
+            print(f"Warning: Injection test running with separate_saturated=True. "
+                  f"Since num_toplist ({num_toplist}) is often set low for injections to save cost, "
+                  "this may incorrectly separate valid bands as saturated.")
 
-        - freq: int
-            The frequency value for the 1Hz band being processed.
-            
-        - mean2F_th: float
-            The threshold value of the mean 2F statistic, which determines whether an outlier qualifies for follow-up or further analysis.
-
-        - numTopList: int, optional (default=1000)
-            Maximum number of top outliers to keep for each job's results.
-
-        - stage: str, optional (default='search')
-            The stage of the analysis. Determines the naming and organizational conventions for output files.
-
-        - freqDerivOrder: int, optional (default=2)
-            Specifies the order of frequency derivatives to consider (e.g., df1dot, df2dot) when calculating threshold and creating results.
-
-        - cluster: bool, optional (default=False)
-            If True, clusters outliers to consolidate similar results, saving computational costs and storage.
-
-        - workInLocalDir: bool, optional (default=False)
-            If True, stores output files in the local directory. This option might be useful for local testing.
-
-        - separateSaturated: bool, optional (default=True)
-            If True, separates saturated outliers from non-saturated ones.
-
-        - max_worker: int 
-            The numer of threads being used in the analysis.
-        """ 
-        
-        outlier_file_path = self._make_search_outlier(taskname, freq, mean2f_th, n_jobs, num_toplist, 
-                                                      stage, freq_deriv_order, cluster, work_in_local_dir, 
-                                                      separate_saturated, max_workers)
-        print('Finish writing search result for {0} Hz'.format(freq))
-        return outlier_file_path 
-
-    def _make_injection_outlier(self, taskname, freq, mean2f_th, n_jobs, num_toplist=1000, 
-                                stage='injection', freq_deriv_order=2, cluster=False, 
-                                work_in_local_dir=False, separate_saturated=False, max_workers=32):
-        
         job_indices = list(range(1, n_jobs + 1))
         
-        # read_inj=True: Read the injection files!
-        outliers, _, inj_data_list, info_list, max_spacing = self._collect_outlier_data(
+        # 2. Collect data using your central engine
+        outliers, sat_outliers, inj_data_list, info_list, max_spacing = self._collect_outlier_data(
             taskname, freq, stage, job_indices, mean2f_th, num_toplist, 
             freq_deriv_order, work_in_local_dir, max_workers, 
-            read_inj=True, separate_saturated=separate_saturated, desc="Injection"
+            read_inj=is_injection, separate_saturated=separate_saturated, desc=stage.capitalize()
         )
-        info_data = np.recarray((n_jobs,), dtype=[(key, '>f8') for key in ['freq', 'jobIndex', 'outliers', 'isSaturated']])
-        for i, (f, j, o, s) in enumerate(info_list):
-            info_data[i] = (f, j, o, s)
-            
-        primary_hdu = fits.PrimaryHDU()
-        primary_hdu.header['HIERARCH mean2F_th'] = mean2f_th        
 
+        # 3. Build Primary HDU and Header
+        primary_hdu = fits.PrimaryHDU()
+        
+        is_scalar_th = np.isscalar(mean2f_th)
+        if is_scalar_th:
+            primary_hdu.header['HIERARCH mean2F_th'] = mean2f_th
+            
         if max_spacing:
             for key, val in max_spacing.items():
                 primary_hdu.header[f'HIERARCH {key}'] = val
-        
+
+        hdus = [primary_hdu]
+
+        # 4. Add Outlier HDU
         if outliers:
-            out_hdu = fits.BinTableHDU(data=vstack(outliers), name=stage+'_outlier')
+            hdus.append(fits.BinTableHDU(data=vstack(outliers), name=f'{stage}_outlier'))
         else:
-            out_hdu = fits.BinTableHDU(name=stage+'_outlier')
-            
-        info_hdu = fits.BinTableHDU(data=info_data, name='info') 
-        
-        # Build Injection HDU
-        if inj_data_list:
-            inj_hdu = fits.BinTableHDU(data=vstack(inj_data_list), name='injection')
-        else:
-            inj_hdu = fits.BinTableHDU(name='injection')
+            hdus.append(fits.BinTableHDU(name=f'{stage}_outlier'))
 
-        # Assemble FITS with 4 HDUs (including injection)
-        outlier_hdul = fits.HDUList([primary_hdu, out_hdu, inj_hdu, info_hdu])
-        
-        outlier_file_path = self.paths.outlier_file(freq, taskname, stage, cluster=False)
-        if work_in_local_dir:
-            outlier_file_path = Path(outlier_file_path).name
-            
-        make_dir([outlier_file_path])
-        outlier_hdul.writeto(outlier_file_path, overwrite=True)  
-        
-        if cluster and out_hdu.data is not None:
-            primary_hdu.header['HIERARCH cluster_n_spacing'] = self.config.get('cluster_n_spacing', 1)
-            outlier_file_path = self._write_clustered_results(
-                freq, taskname, stage, out_hdu.data, freq_deriv_order, 
-                primary_hdu, inj_hdu=inj_hdu,
-                work_in_local_dir=work_in_local_dir
-            )
-            
-        return outlier_file_path
+        # 5. Add Stage-Specific HDUs
+        # A) Injection Data
+        if is_injection:
+            if inj_data_list:
+                hdus.append(fits.BinTableHDU(data=vstack(inj_data_list), name='injection'))
+            else:
+                hdus.append(fits.BinTableHDU(name='injection'))
 
-    def make_injection_outlier(self, taskname, freq, mean2f_th, n_jobs, num_toplist=1000, 
-                               stage='search', freq_deriv_order=2, cluster=False, work_in_local_dir=False, 
-                               separate_saturated=False, max_workers=32):
-        """
-        Public wrapper to write injection-search results.
-        """
+        # B) Saturated Data
+        if separate_saturated:
+            if sat_outliers:
+                hdus.append(fits.BinTableHDU(data=vstack(sat_outliers), name=f'{stage}_sat_outlier'))
+            else:
+                hdus.append(fits.BinTableHDU(name=f'{stage}_sat_outlier'))
 
-        outlier_file_path = self._make_injection_outlier(taskname, freq, mean2f_th, n_jobs, num_toplist, 
-                                                         stage, freq_deriv_order, cluster, work_in_local_dir, 
-                                                         separate_saturated=separate_saturated, max_workers=max_workers)
-        print('Finish writing injection result for {0} Hz'.format(freq))
-        return outlier_file_path
-
-    def _make_followup_outlier(self, taskname, freq, mean2f_th, n_jobs, num_toplist=1000, 
-                               stage='followup', freq_deriv_order=2, cluster=False, 
-                               work_in_local_dir=False, separate_saturated=False, max_workers=32):
+        # 6. Build and Add Info HDU dynamically based on threshold type
+        info_cols = [('freq', '>f8'), ('jobIndex', '>f8'), ('outliers', '>f8'), ('isSaturated', '>f8')]    
+        info_data = np.recarray((n_jobs,), dtype=info_cols)
         
-        job_indices = list(range(1, n_jobs + 1))
-        
-        # check_saturation=False: Keep all results for followup
-        outliers, _, _, info_list, max_spacing = self._collect_outlier_data(
-            taskname, freq, stage, job_indices, mean2f_th, num_toplist, 
-            freq_deriv_order, work_in_local_dir, max_workers, 
-            read_inj=False, separate_saturated=separate_saturated, desc="Followup"
-        )
-        
-        info_data = np.recarray((n_jobs,), dtype=[(key, '>f8') for key in ['freq', 'jobIndex', 'outliers', 'isSaturated']])
         for i, (f, j, o, s) in enumerate(info_list):
             info_data[i] = (f, j, o, s)
-            
-        primary_hdu = fits.PrimaryHDU()
+                
+        hdus.append(fits.BinTableHDU(data=info_data, name='info'))
 
-        if max_spacing:
-            for key, val in max_spacing.items():
-                primary_hdu.header[f'HIERARCH {key}'] = val
-            
-        if outliers:
-            out_hdu = fits.BinTableHDU(data=vstack(outliers), name=stage+'_outlier')
-        else:
-            out_hdu = fits.BinTableHDU(name=stage+'_outlier')
-            
-        info_hdu = fits.BinTableHDU(data=info_data, name='info') 
+        # 7. Build and Add Non-Saturated Band HDU (Search specific)
+        if 'search' in stage.lower():
+            f0_band = self.config['f0_band']
+            sat_matrix = info_data['isSaturated'].reshape(int(1. / f0_band), -1)
+            idx = np.where(~sat_matrix.any(axis=1))[0]
+            non_sat_data = np.recarray((len(idx),), dtype=[('non_sat_band', '>f8')])
+            non_sat_data['non_sat_band'] = int(freq) + idx * f0_band
+            hdus.append(fits.BinTableHDU(data=non_sat_data, name='non_sat_band'))
 
-        # Assemble FITS with 3 HDUs
-        outlier_hdul = fits.HDUList([primary_hdu, out_hdu, info_hdu])
-        
+        # 8. Write Initial File
+        outlier_hdul = fits.HDUList(hdus)
         outlier_file_path = self.paths.outlier_file(freq, taskname, stage, cluster=False)
         if work_in_local_dir:
             outlier_file_path = Path(outlier_file_path).name
             
         make_dir([outlier_file_path])
-        outlier_hdul.writeto(outlier_file_path, overwrite=True)  
-        
-        if cluster and out_hdu.data is not None:
-            primary_hdu.header['HIERARCH cluster_n_spacing'] = self.config.get('cluster_n_spacing', 1)
-            outlier_file_path = self._write_clustered_results(
-                freq, taskname, stage, out_hdu.data, freq_deriv_order, 
-                primary_hdu, inj_hdu=None, 
-                work_in_local_dir=work_in_local_dir
-            )
-            
-        return outlier_file_path
-    
-    def make_followup_outlier(self, taskname, freq, mean2f_th, n_jobs, num_toplist=1000, 
-                              new_stage='followUp-1', new_freq_deriv_order=2, 
-                              cluster=False, work_in_local_dir=True, 
-                              separate_saturated=False, max_workers=32):
-        """
-        Public wrapper to write follow-up results.
-        """
-        
-        outlier_file_path = self._make_followup_outlier(taskname, freq, mean2f_th, n_jobs, num_toplist, 
-                                                        new_stage, new_freq_deriv_order, cluster, work_in_local_dir, 
-                                                        separate_saturated=separate_saturated, max_workers=max_workers)
-
-        print(f'Finish writing followUp result for {freq} Hz')
-        return outlier_file_path
-
-    def ensemble_followup_result(self, freq, taskname, stage, inj_stage, outlier_file_path_list, inj_outlier_file_path_list, 
-                                 mean2f_ratio_list, num_toplist_list,
-                                 final_stage, cluster=False, work_in_local_dir=False):
-        """Combines results from multiple follow-up stages into one summary FITS file."""
-        n_inj_table = len(inj_outlier_file_path_list)
-        n_out_table = len(outlier_file_path_list)
-        
-        primary_hdu = fits.PrimaryHDU()
-        outlier_hdul = fits.HDUList()
-        
-        # Metadata
-        try:
-            # Try to get threshold from the first available file
-            source_file = outlier_file_path_list[0] if n_out_table > 0 else (inj_outlier_file_path_list[0] if n_inj_table > 0 else None)
-            if source_file:
-                mean2f_th = fits.getheader(source_file)['HIERARCH mean2F_th']
-                primary_hdu.header['HIERARCH mean2F_th'] = mean2f_th
-        except (IndexError, KeyError, FileNotFoundError):
-            print("Warning: Unable to retrieve mean2F_th from header.")
-            pass
-
-        primary_hdu.header['HIERARCH injection_test'] = (n_inj_table != 0)
-            
-        # Record ratios and top lists for every stage in the header
-        # We iterate up to the max number of stages provided
-        max_stages = max(n_inj_table, n_out_table)
-        
-        # Note: The loop index 'i' corresponds to the follow-up stage index. 
-        # Typically stage lists include the initial search, so we might offset by 1 if 'stage' list includes 'search' at index 0.
-        for i in range(max_stages):
-            # Check bounds for ratio list
-            if i < len(mean2f_ratio_list):
-                # We use stage[i+1] assuming the lists passed in include the initial search stage name at 0
-                stage_name = stage[i+1] if (i+1) < len(stage) else f"stage_{i+1}"
-                primary_hdu.header[f'HIERARCH mean2F_ratio_{stage_name}'] = mean2f_ratio_list[i]
-            
-            # Check bounds for top list
-            if i < len(num_toplist_list):
-                stage_name = stage[i+1] if (i+1) < len(stage) else f"stage_{i+1}"
-                primary_hdu.header[f'HIERARCH numTopList_{stage_name}'] = num_toplist_list[i]
-                
-        outlier_hdul.append(primary_hdu)
-                 
-        # 1. Append Injection Follow-up Stages
-        for i in range(n_inj_table):           
-            try:
-                # Outliers
-                data = fits.getdata(inj_outlier_file_path_list[i], extname=inj_stage[i]+'_outlier')
-                outlier_hdul.append(fits.BinTableHDU(data=data, name=inj_stage[i]+'_outlier'))
-                
-                # Injections
-                data = fits.getdata(inj_outlier_file_path_list[i], extname='inj') 
-                outlier_hdul.append(fits.BinTableHDU(data=data, name=inj_stage[i]+'_inj'))
-
-                # Info
-                data = fits.getdata(inj_outlier_file_path_list[i], extname='info')
-                outlier_hdul.append(fits.BinTableHDU(data=data, name=inj_stage[i]+'_info'))
-            except FileNotFoundError:
-                print(f"Warning: Missing injection file {inj_outlier_file_path_list[i]}")
-
-        # 2. Append Search Follow-up Stages
-        for i in range(n_out_table):
-            try:
-                data = fits.getdata(outlier_file_path_list[i], extname=stage[i]+'_outlier')
-                outlier_hdul.append(fits.BinTableHDU(data=data, name=stage[i]+'_outlier'))
-
-                data = fits.getdata(outlier_file_path_list[i], extname='info')
-                outlier_hdul.append(fits.BinTableHDU(data=data, name=stage[i]+'_info'))
-            except FileNotFoundError:
-                print(f"Warning: Missing outlier file {outlier_file_path_list[i]}")
-        
-        # Write Final Ensemble File
-        outlier_file_path = self.paths.outlier_file(freq, taskname, final_stage, cluster=cluster)    
-        
-        if work_in_local_dir:
-            outlier_file_path = Path(outlier_file_path).name        
-        else:
-            make_dir([outlier_file_path])    
-        
         outlier_hdul.writeto(outlier_file_path, overwrite=True)
+        
+        # 9. Handle Clustering
+        if cluster and hdus[1].data is not None:
+            primary_hdu.header['HIERARCH cluster_n_spacing'] = self.config['cluster_n_spacing']
+            
+            inj_hdu_to_pass = next((h for h in hdus if h.name == 'INJECTION'), None)
+            non_sat_hdu_to_pass = next((h for h in hdus if h.name == 'NON_SAT_BAND'), None)
+
+            outlier_file_path = self._write_clustered_results(
+                freq, taskname, stage, hdus[1].data, freq_deriv_order, 
+                primary_hdu, inj_hdu=inj_hdu_to_pass, non_sat_hdu=non_sat_hdu_to_pass,
+                work_in_local_dir=work_in_local_dir
+            )
+
+        print(f'Finished writing {stage} result for {freq} Hz')
         return outlier_file_path
+
+    # def ensemble_followup_result(self, freq, taskname, stage, inj_stage, outlier_file_path_list, inj_outlier_file_path_list, 
+    #                              mean2f_ratio_list, num_toplist_list,
+    #                              final_stage, cluster=False, work_in_local_dir=False):
+    #     """Combines results from multiple follow-up stages into one summary FITS file."""
+    #     n_inj_table = len(inj_outlier_file_path_list)
+    #     n_out_table = len(outlier_file_path_list)
+        
+    #     primary_hdu = fits.PrimaryHDU()
+    #     outlier_hdul = fits.HDUList()
+        
+    #     # Metadata
+    #     try:
+    #         # Try to get threshold from the first available file
+    #         source_file = outlier_file_path_list[0] if n_out_table > 0 else (inj_outlier_file_path_list[0] if n_inj_table > 0 else None)
+    #         if source_file:
+    #             mean2f_th = fits.getheader(source_file)['HIERARCH mean2F_th']
+    #             primary_hdu.header['HIERARCH mean2F_th'] = mean2f_th
+    #     except (IndexError, KeyError, FileNotFoundError):
+    #         print("Warning: Unable to retrieve mean2F_th from header.")
+    #         pass
+
+    #     primary_hdu.header['HIERARCH injection_test'] = (n_inj_table != 0)
+            
+    #     # Record ratios and top lists for every stage in the header
+    #     # We iterate up to the max number of stages provided
+    #     max_stages = max(n_inj_table, n_out_table)
+        
+    #     # Note: The loop index 'i' corresponds to the follow-up stage index. 
+    #     # Typically stage lists include the initial search, so we might offset by 1 if 'stage' list includes 'search' at index 0.
+    #     for i in range(max_stages):
+    #         # Check bounds for ratio list
+    #         if i < len(mean2f_ratio_list):
+    #             # We use stage[i+1] assuming the lists passed in include the initial search stage name at 0
+    #             stage_name = stage[i+1] if (i+1) < len(stage) else f"stage_{i+1}"
+    #             primary_hdu.header[f'HIERARCH mean2F_ratio_{stage_name}'] = mean2f_ratio_list[i]
+            
+    #         # Check bounds for top list
+    #         if i < len(num_toplist_list):
+    #             stage_name = stage[i+1] if (i+1) < len(stage) else f"stage_{i+1}"
+    #             primary_hdu.header[f'HIERARCH numTopList_{stage_name}'] = num_toplist_list[i]
+                
+    #     outlier_hdul.append(primary_hdu)
+                 
+    #     # 1. Append Injection Follow-up Stages
+    #     for i in range(n_inj_table):           
+    #         try:
+    #             # Outliers
+    #             data = fits.getdata(inj_outlier_file_path_list[i], extname=inj_stage[i]+'_outlier')
+    #             outlier_hdul.append(fits.BinTableHDU(data=data, name=inj_stage[i]+'_outlier'))
+                
+    #             # Injections
+    #             data = fits.getdata(inj_outlier_file_path_list[i], extname='inj') 
+    #             outlier_hdul.append(fits.BinTableHDU(data=data, name=inj_stage[i]+'_inj'))
+
+    #             # Info
+    #             data = fits.getdata(inj_outlier_file_path_list[i], extname='info')
+    #             outlier_hdul.append(fits.BinTableHDU(data=data, name=inj_stage[i]+'_info'))
+    #         except FileNotFoundError:
+    #             print(f"Warning: Missing injection file {inj_outlier_file_path_list[i]}")
+
+    #     # 2. Append Search Follow-up Stages
+    #     for i in range(n_out_table):
+    #         try:
+    #             data = fits.getdata(outlier_file_path_list[i], extname=stage[i]+'_outlier')
+    #             outlier_hdul.append(fits.BinTableHDU(data=data, name=stage[i]+'_outlier'))
+
+    #             data = fits.getdata(outlier_file_path_list[i], extname='info')
+    #             outlier_hdul.append(fits.BinTableHDU(data=data, name=stage[i]+'_info'))
+    #         except FileNotFoundError:
+    #             print(f"Warning: Missing outlier file {outlier_file_path_list[i]}")
+        
+    #     # Write Final Ensemble File
+    #     outlier_file_path = self.paths.outlier_file(freq, taskname, final_stage, cluster=cluster)    
+        
+    #     if work_in_local_dir:
+    #         outlier_file_path = Path(outlier_file_path).name        
+    #     else:
+    #         make_dir([outlier_file_path])    
+        
+    #     outlier_hdul.writeto(outlier_file_path, overwrite=True)
+    #     return outlier_file_path

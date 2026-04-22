@@ -73,7 +73,6 @@ class PowerLawModel:
 class UniformModel:
     """
     Defines parameter ranges based on fixed rectangular bounds (Uniform).
-    Ignores physics inputs like 'tau' but keeps the method signature compatible.
     """
     def __init__(self, f1_lim, f2_lim, f3_lim=None, f4_lim=None):
         """
@@ -86,13 +85,11 @@ class UniformModel:
         self.f4_lim = f4_lim if f4_lim else (0, 0)
 
     def get_n_f1(self, df1):
-        # We ignore 'tau' here
         _, _, bandwidth = self.f1_broad_range()
         n = bandwidth / df1
         return np.ceil(n).astype(int)
 
     def get_n_f2(self, df2):
-        # We ignore 'tau' and f1 inputs, using fixed bounds
         _, _, bandwidth = self.f2_broad_range()
         n = bandwidth / df2
         return np.ceil(n).astype(int)

@@ -1,22 +1,23 @@
 from astropy.io import fits
 from astropy.table import Table
-
-from . import models as fr         
+       
 from paws.definitions import phase_param_name
 
 class FollowUpParamGenerator():    
-    def __init__(self, target, nc_min=2, nc_max=7):
+    def __init__(self, model):
         """
         Initialize the FollowUpParams generator.
 
         Parameters:
-        - target (object): Target object containing name and properties.
-        - nc_min (int): Minimum braking index for frequency derivative calculations (default: 2).
-        - nc_max (int): Maximum braking index for frequency derivative calculations (default: 7).
+        - model (object): Instance of PowerLawModel or UniformModel (REQUIRED).
         """
-        self.target = target
-        self.nc_min = nc_min
-        self.nc_max = nc_max
+        self.model = model
+        
+        # Initialize attributes that are set later via generate_parameters
+        self.alpha = None
+        self.dalpha = None
+        self.delta = None
+        self.ddelta = None
     
     def generate_parameter_table(self, data, old_freq_deriv_order, new_freq_deriv_order, spacing, n_spacing): 
         """
@@ -39,10 +40,10 @@ class FollowUpParamGenerator():
             return fits.BinTableHDU(data=data)        
 
         if 'dalpha' not in data.colnames:
-            data['dalpha'] = self.target['dalpha']
+            data['dalpha'] = self.dalpha
             
         if 'ddelta' not in data.colnames:
-            data['ddelta'] = self.target['ddelta']
+            data['ddelta'] = self.ddelta
         
         # Get parameter names from utils
         freq_param_names, freq_deriv_param_names = phase_param_name(old_freq_deriv_order)
@@ -65,35 +66,36 @@ class FollowUpParamGenerator():
         for freq_name, freq_deriv_name in zip(new_freq_param_names, new_freq_deriv_param_names):
             if freq_name == 'f3dot':
                 # Calculate broad ranges based on current f1/f2 values
-                f3_min, _, f3_band = fr.f3_broad_range(
+                f3_min, _, f3_band = self.model.f3_broad_range(
                     data['freq'], 
                     spacing['df'], 
                     data['f1dot'], 
-                    data['f1dot'] + spacing['df1dot'],
-                    nc_min=self.nc_min,
-                    nc_max=self.nc_max
+                    data['f1dot'] + spacing['df1dot']
                 )
                 data.add_column(f3_min, name=freq_name)
                 data.add_column(f3_band, name=freq_deriv_name)
                 
             elif freq_name == 'f4dot':
-                f4_min, _, f4_band = fr.f4_broad_range(
+                f4_min, _, f4_band = self.model.f4_broad_range(
                     data['freq'], 
                     spacing['df'], 
                     data['f1dot'], 
-                    data['f1dot'] + spacing['df1dot'],
-                    nc_min=self.nc_min,
-                    nc_max=self.nc_max
+                    data['f1dot'] + spacing['df1dot']
                 )
                 data.add_column(f4_min, name=freq_name)
                 data.add_column(f4_band, name=freq_deriv_name)
                 
         return fits.BinTableHDU(data=data)
            
-    def generate_parameter(self, data, old_freq_deriv_order, new_freq_deriv_order, spacing, n_spacing=1): 
+    def generate_parameter(self, alpha, dalpha, delta, ddelta, data, old_freq_deriv_order, new_freq_deriv_order, spacing, n_spacing=1): 
         """
         Main entry point to generate parameters.
         """
+        self.alpha = alpha
+        self.dalpha = dalpha
+        self.delta = delta
+        self.ddelta = ddelta
+
         if old_freq_deriv_order > 4 or new_freq_deriv_order > 4:
             print('Error: frequency derivative order larger than 4.')
             # You might want to raise an actual Exception here:
@@ -102,5 +104,5 @@ class FollowUpParamGenerator():
         params = self.generate_parameter_table(data, old_freq_deriv_order, new_freq_deriv_order, spacing, n_spacing)
         
         # Removed unused args: cluster, workInLocalDir are not used in logic anymore
-        print(f"Done generation of {self.target['name']} follow-up parameters\n")
+        print(f"Done generation.\n")
         return params

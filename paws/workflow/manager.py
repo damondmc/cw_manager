@@ -79,7 +79,7 @@ class WorkflowManager:
         # 1. Create a task file for this specific Condor node (saved in the DAG directory)
         task_dir = self.paths.dag_file(freq, taskname, stage).parent / "tasks"
         task_dir.mkdir(parents=True, exist_ok=True)
-        task_file = task_dir / f"task_{node_index}.txt"
+        task_file = task_dir / f"{taskname}_task_{node_index}.txt"
         
         output_files = []
         remap_strings = []

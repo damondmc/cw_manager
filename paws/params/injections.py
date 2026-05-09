@@ -13,12 +13,12 @@ class InjectionParamGenerator:
 
 
     @staticmethod
-    def sky_sampler(target_ra, target_dec, sky_uncertainty, n_samples):
+    def sky_sampler(target_ra, target_dec, sky_radius, n_samples):
         """
         Samples sky locations uniformly within a circular cap around the target.
         """
         # 1. Sample uniformly in cos(theta) and phi
-        z_min = np.cos(sky_uncertainty)
+        z_min = np.cos(sky_radius)
         z = np.random.uniform(z_min, 1.0, n_samples)
         theta = np.arccos(z)
         phi = np.random.uniform(0, 2 * np.pi, n_samples)
@@ -69,7 +69,7 @@ class InjectionParamGenerator:
         f0 = selected_bands + np.random.uniform(0, self.f0_band, n_inj)
         return f0
 
-    def generate_injection_table(self, alpha, delta, non_sat_bands, h0, n_inj, inj_freq_deriv_order, sky_uncertainty):
+    def generate_injection_table(self, alpha, delta, non_sat_bands, h0, n_inj, inj_freq_deriv_order, sky_radius):
         """Generates the source injection parameters."""
         freq_params, _ = phase_param_name(inj_freq_deriv_order)
         
@@ -80,7 +80,7 @@ class InjectionParamGenerator:
         inj_data = Table(np.zeros((n_inj, len(col_names))), names=col_names)
 
         # 1. Sky Location
-        alpha, delta = self.sky_sampler(alpha, delta, sky_uncertainty, n_inj)
+        alpha, delta = self.sky_sampler(alpha, delta, sky_radius, n_inj)
         inj_data['Alpha'] = alpha
         inj_data['Delta'] = delta
 
@@ -166,7 +166,7 @@ class InjectionParamGenerator:
         return fits.BinTableHDU(search_range)
 
     def generate_parameters(self, alpha, dalpha, delta, ddelta, non_sat_bands, spacing, h0, freq, n_inj=1, n_spacing=1,
-                            freq_deriv_order=2, inj_freq_deriv_order=4, sky_uncertainty=0):
+                            freq_deriv_order=2, inj_freq_deriv_order=4, sky_radius=0):
         """
         High-level wrapper to generate both Injection Parameters and Search Ranges.
         
@@ -180,7 +180,7 @@ class InjectionParamGenerator:
             print('Error: Injection frequency derivative order larger than 4.')
             
         # 1. Generate Injection Table
-        ip_hdu = self.generate_injection_table(alpha, delta, non_sat_bands, h0, n_inj, inj_freq_deriv_order, sky_uncertainty)
+        ip_hdu = self.generate_injection_table(alpha, delta, non_sat_bands, h0, n_inj, inj_freq_deriv_order, sky_radius)
         
         # 2. Generate Search Range Table
         sp_hdu = self.generate_search_range_table(alpha, dalpha, delta, ddelta, spacing, ip_hdu.data, freq_deriv_order, n_spacing)

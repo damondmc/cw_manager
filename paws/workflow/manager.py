@@ -222,7 +222,7 @@ class WorkflowManager:
     def _ul_args(self, config_file, target_file, taskname, 
                  freq, stage, freq_deriv_order, df_grid, inj_freq_deriv_order,
                  sft_files_local, metric_file_local, n_inj, num_toplist, h0_est, 
-                 mean2f_th, non_sat_bands, sky_uncertainty, 
+                 mean2f_th, non_sat_bands, sky_radius, 
                  cluster, work_in_local_dir, save_intermediate, request_cpu):
         """Generates command line arguments for the python upper limit script."""
  
@@ -236,7 +236,7 @@ class WorkflowManager:
             f'--sft_files {sft_files_local} --metric_file {metric_file_local} '
             f'--n_inj {n_inj} --num_toplist {num_toplist} --h0_est {h0_est} '
             f'--mean2f_th {mean2f_th} --non_sat_bands {bands_str} '
-            f'--sky_uncertainty {sky_uncertainty} --n_cpus {request_cpu}'
+            f'--sky_radius {sky_radius} --n_cpus {request_cpu}'
         )
 
         if cluster:
@@ -270,7 +270,7 @@ class WorkflowManager:
     def make_upperlimit_dag(self, config_file, target_file, taskname, freq, stage, freq_deriv_order,
                             sft_files, metric_file, mean2f_th, non_sat_bands, exe,
                             df_grid=[1e-6, 1e-13, 1e-20], inj_freq_deriv_order=4, num_toplist=1,
-                            sky_uncertainty=1e-5, h0_est=6e-26, n_inj=64, 
+                            sky_radius=1e-5, h0_est=6e-26, n_inj=64, 
                             request_memory='4GB', request_disk='4GB', request_cpu=32,
                             cluster=False, work_in_local_dir=False, save_intermediate=False,
                             image=None):
@@ -298,7 +298,7 @@ class WorkflowManager:
             df_grid=df_grid, inj_freq_deriv_order=inj_freq_deriv_order,
             sft_files_local=sft_files_local, metric_file_local=metric_file_local, 
             n_inj=n_inj, num_toplist=num_toplist, h0_est=h0_est, 
-            mean2f_th=mean2f_th, non_sat_bands=non_sat_bands, sky_uncertainty=sky_uncertainty, 
+            mean2f_th=mean2f_th, non_sat_bands=non_sat_bands, sky_radius=sky_radius, 
             cluster=cluster, work_in_local_dir=work_in_local_dir, 
             save_intermediate=save_intermediate, request_cpu=request_cpu
         )

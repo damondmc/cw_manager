@@ -34,40 +34,29 @@ class PathManager:
     
     @property
     def weave_executable(self):
-        # Prefer config definition, fallback to default if missing
-        return self.config.get('executables', {}).get('weave', 
-            '/cvmfs/software.igwn.org/conda/envs/igwn-py39-20231212/bin/lalpulsar_Weave')
+        return self.config['executables']['weave']
 
     # ---------------------------------------------------------
     # Input Data (SFTs)
     # ---------------------------------------------------------
 
-    def sft_file_path(self, freq, detector='H1', use_osdf=False):
+    def sft_file_path(self, freq, detector='H1'):
         """
         Returns the DIRECTORY path containing SFTs for a specific frequency.
+        sft_dir in config.yaml is the local OSDF mount path (e.g. /osdf/igwn/.../SFTs).
         """
-        if use_osdf:
-            root = self.osdf_dir / 'SFTs' / 'o4ab_data' # Adjusted based on your snippet adding 'o4ab'
-        else:
-            # /home/user/SFTs/o4ab_data/
-            root = Path(f'/home/{self.user}/SFTs/o4ab_data')
+        return Path(self.config['sft_dir']) / detector / str(int(freq))
 
-        # Construct: root / SFTs / H1 / 100
-        return root / 'SFTs' / detector / str(int(freq))
-
-    def sft_ensemble(self, freq, use_osdf=False):
+    def sft_ensemble(self, freq):
         """
-        Returns a list of SFT file paths for H1 and L1 detectors.
+        Returns a list of osdf:// SFT URLs for H1 and L1 detectors.
+        Converts the local mount path to an osdf:// URL by stripping the
+        leading '/osdf' mount prefix (5 chars).
         """
-        h1_path = Path(self.sft_file_path(freq, detector='H1', use_osdf=use_osdf))
-        l1_path = Path(self.sft_file_path(freq, detector='L1', use_osdf=use_osdf))
-        
-        if not use_osdf:
-            sft_list = [str(s) for s in h1_path.glob("*.sft")] + [str(s) for s in l1_path.glob("*.sft")]
-        else:
-            # Assumes osdf path logic where slicing [5:] removes the local mount prefix
-            sft_list = ['osdf://' + str(s)[5:] for s in h1_path.glob("*.sft")] + \
-                       ['osdf://' + str(s)[5:] for s in l1_path.glob("*.sft")]     
+        h1_path = self.sft_file_path(freq, detector='H1')
+        l1_path = self.sft_file_path(freq, detector='L1')
+        sft_list = ['osdf://' + str(s)[5:] for s in h1_path.glob("*.sft")] + \
+                   ['osdf://' + str(s)[5:] for s in l1_path.glob("*.sft")]
         return sft_list
 
     # ---------------------------------------------------------

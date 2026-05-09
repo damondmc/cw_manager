@@ -1,3 +1,4 @@
+import sys
 import time
 import numpy as np
 from pathlib import Path
@@ -155,6 +156,10 @@ class WorkflowManager:
         """
         Creates the DAG and SUB files for the Search/Follow-up stage using grouped batching.
         """
+        if not use_osg:
+            print("Error: CIT cluster mode (use_osg=False) is not supported. Only OSG (use_osg=True) is tested.")
+            sys.exit(1)
+
         t0 = time.time()
         is_injection = inj_params is not None and inj_freq_deriv_order is not None
         print(f"Generating DAG for {taskname} (Mode: {stage}, Injections: {is_injection}, Batch Size: {tasks_per_job})...")

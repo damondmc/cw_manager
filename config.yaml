@@ -16,6 +16,9 @@ executables:
 # --- Data label ---
 sft_source: C00-C01_Gated_G02_1800s
 
+# --- SFT directory (local OSDF mount path; converted to osdf:// URLs automatically) ---
+sft_dir: /osdf/igwn/cit/staging/hoitim.cheung/SFTs/o4ab_data/SFTs
+
 # --- Computing label ---
 acc_group: ligo.prod.o4.cw.directedisolated.semicoherent
 

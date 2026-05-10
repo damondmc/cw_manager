@@ -101,6 +101,8 @@ def main():
         help="Non-saturated frequency bands to use for injections",
     )
     parser.add_argument("--sky_radius", type=float, default=1e-4)
+    parser.add_argument("--spacing_alpha", type=float, default=None)
+    parser.add_argument("--spacing_delta", type=float, default=None)
     parser.add_argument("--cluster", action="store_true")
     parser.add_argument("--work_in_local_dir", action="store_true")
     parser.add_argument("--save_intermediate", action="store_true")
@@ -122,6 +124,8 @@ def main():
     mean2f_th = args.mean2f_th
     non_sat_bands = args.non_sat_bands
     sky_radius = args.sky_radius
+    spacing_alpha = args.spacing_alpha
+    spacing_delta = args.spacing_delta
     num_toplist = args.num_toplist
 
     non_sat_bands = np.array(non_sat_bands)
@@ -193,7 +197,12 @@ def main():
         inj_freq_deriv_order=inj_freq_deriv_order,
         freq_deriv_order=freq_deriv_order,
         sky_radius=sky_radius,
+        spacing_alpha=spacing_alpha,
+        spacing_delta=spacing_delta,
     )
+
+    # n_sky: number of sky-point jobs per injection (1 if no tiling)
+    n_sky = len(search_data[str(freq)].data) // n_inj
 
     # 4. Iterative Injection Loop
     h0_arr, eff_arr = [], []  # h0 and efficiency arrays
@@ -216,6 +225,7 @@ def main():
             target=target,
             freq=freq,
             freq_deriv_order=freq_deriv_order,
+            n_sky=n_sky,
             num_toplist=num_toplist,
             n_seg=107,
             sft_files=sft_files,

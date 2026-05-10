@@ -21,14 +21,15 @@ with open(f"{home_dir}config/gal.yaml", "r") as f:
 paths = PathManager(config, target)
 manager = WorkflowManager(config, target)
 
-# injection-2 308-318 dag was accidentally generated with new ver of paws, but results were done with old vers so keep it.
 fmin = 20
 fmax = 400
 stage = "injections-0"
 tcoh = 5
 freq_deriv_order = 2
 inj_freq_deriv_order = 4
-sky_uncertainty = 1e-4
+sky_radius = 1.25e-4
+spacing_alpha = sky_radius / 1.5
+spacing_delta = sky_radius / 1.5
 ref_time = 1395617439
 n_seg = 107
 n_inj = 200
@@ -57,7 +58,7 @@ with open(dag_list_path, "w") as f_daglist:
         zip(range(fmin, fmax), h0_arr), desc="Generating DAGs", total=fmax - fmin
     ):
         sft_files = []
-        files = paths.sft_ensemble(freq, use_osdf=True)
+        files = paths.sft_ensemble(freq)
         sft_files.extend(files)  # Use extend, not append, to flatten the list
 
         data_taskname = (
@@ -113,7 +114,9 @@ with open(dag_list_path, "w") as f_daglist:
             n_spacing=config["followup_n_spacing"],
             inj_freq_deriv_order=inj_freq_deriv_order,
             freq_deriv_order=freq_deriv_order,
-            sky_uncertainty=sky_uncertainty,
+            sky_radius=sky_radius,
+            spacing_alpha=spacing_alpha,
+            spacing_delta=spacing_delta,
         )
 
         # --- Make DAG ---

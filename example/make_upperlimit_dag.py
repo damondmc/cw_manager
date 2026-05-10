@@ -50,7 +50,7 @@ with open(dag_list_path, "w") as f_daglist:
     ):
         # --- Collect SFT files ---
         sft_files = []
-        files = paths.sft_ensemble(freq, use_osdf=True)
+        files = paths.sft_ensemble(freq)
         sft_files.extend(files)  # Use extend, not append, to flatten the list
 
         data_taskname = f"GalacticCenter_search-0_TCoh5_O2_{freq}Hz"
@@ -91,7 +91,9 @@ with open(dag_list_path, "w") as f_daglist:
             df_grid=df_grid,
             inj_freq_deriv_order=4,
             num_toplist=1,
-            sky_uncertainty=1e-4,
+            sky_radius=1.25e-4,
+            spacing_alpha=1.25e-4 / 1.5,
+            spacing_delta=1.25e-4 / 1.5,
             h0_est=h0_est,
             n_inj=200,
             request_memory="16GB",

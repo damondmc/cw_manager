@@ -1,7 +1,9 @@
+import numpy as np
 from astropy.io import fits
 from astropy.table import Table
 
 from paws.definitions import phase_param_name
+from paws.params.sky import sky_hex_offsets
 
 
 class FollowUpParamGenerator:
@@ -21,7 +23,15 @@ class FollowUpParamGenerator:
         self.ddelta = None
 
     def generate_parameter_table(
-        self, data, old_freq_deriv_order, new_freq_deriv_order, spacing, n_spacing
+        self,
+        data,
+        old_freq_deriv_order,
+        new_freq_deriv_order,
+        spacing,
+        n_spacing,
+        sky_radius=0,
+        spacing_alpha=None,
+        spacing_delta=None,
     ):
         """
         Constructs the follow-up parameter table by expanding ranges.
@@ -94,6 +104,19 @@ class FollowUpParamGenerator:
                 data.add_column(f4_min, name=freq_name)
                 data.add_column(f4_band, name=freq_deriv_name)
 
+        # Sky tiling: replicate each outlier row for every hex-grid sky point.
+        # Ordering: outlier_0/sky_0, outlier_0/sky_1, ..., outlier_1/sky_0, ...
+        # so that consecutive blocks of n_sky rows map to the same outlier.
+        if sky_radius > 0 and spacing_alpha is not None and spacing_delta is not None:
+            d_alpha, d_delta = sky_hex_offsets(sky_radius, spacing_alpha, spacing_delta)
+            n_sky = len(d_alpha)
+            n_out = len(data)
+            idx = np.repeat(np.arange(n_out), n_sky)
+            sky_idx = np.tile(np.arange(n_sky), n_out)
+            data = data[idx]
+            data["alpha"] = data["alpha"] + d_alpha[sky_idx]
+            data["delta"] = data["delta"] + d_delta[sky_idx]
+
         return fits.BinTableHDU(data=data)
 
     def generate_parameter(
@@ -107,6 +130,9 @@ class FollowUpParamGenerator:
         new_freq_deriv_order,
         spacing,
         n_spacing=1,
+        sky_radius=0,
+        spacing_alpha=None,
+        spacing_delta=None,
     ):
         """
         Main entry point to generate parameters.
@@ -122,7 +148,14 @@ class FollowUpParamGenerator:
             # raise ValueError("Frequency derivative order cannot be larger than 4")
 
         params = self.generate_parameter_table(
-            data, old_freq_deriv_order, new_freq_deriv_order, spacing, n_spacing
+            data,
+            old_freq_deriv_order,
+            new_freq_deriv_order,
+            spacing,
+            n_spacing,
+            sky_radius=sky_radius,
+            spacing_alpha=spacing_alpha,
+            spacing_delta=spacing_delta,
         )
 
         # Removed unused args: cluster, workInLocalDir are not used in logic anymore

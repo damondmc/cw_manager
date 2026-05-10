@@ -65,32 +65,50 @@ def hexagonal_grid(num_layers):
     return layer_points
 
 
-def sky_hex_offsets(sky_layers, spacing_alpha, spacing_delta):
+def sky_hex_offsets(sky_radius, spacing_alpha, spacing_delta):
     """
-    Returns (d_alpha, d_delta) offset arrays for a hex grid of sky_layers rings.
+    Returns (d_alpha, d_delta) offset arrays for a hex grid truncated to sky_radius.
 
-    Points are ordered layer by layer (layer 0 = origin first). The first point
-    is always (0, 0) — the nominal sky position. Multiply by spacing_alpha and
-    spacing_delta (derived from the Weave metric) to get sky coordinate offsets.
+    Generates enough hex rings to cover sky_radius, then keeps only points whose
+    Euclidean offset sqrt((i*spacing_alpha)^2 + (j*spacing_delta)^2) <= sky_radius.
+    The origin (0, 0) is always first; remaining points are ordered layer by layer.
 
     Parameters
     ----------
-    sky_layers : int
-        Number of hex rings. 0 returns a single point at the origin.
+    sky_radius : float
+        Radius of the sky region to tile (radians). Points outside are discarded.
     spacing_alpha : float
-        Step size per hex unit in the alpha direction (radians). Typically
-        smaller than spacing_delta since the sky metric is tighter in alpha.
+        Step size per hex unit in the alpha direction (radians).
     spacing_delta : float
         Step size per hex unit in the delta direction (radians).
 
     Returns
     -------
     d_alpha, d_delta : ndarray
-        Offset arrays of length 3*sky_layers**2 + 3*sky_layers + 1.
+        Offset arrays; length depends on how many hex points fall within sky_radius.
     """
-    grid = hexagonal_grid(sky_layers)
+    if spacing_alpha is None or spacing_delta is None:
+        raise ValueError("spacing_alpha and spacing_delta must both be provided")
+    if spacing_alpha > spacing_delta:
+        print(
+            f"Warning: spacing_alpha ({spacing_alpha}) > spacing_delta ({spacing_delta}). "
+            "Typically spacing_alpha <= spacing_delta for equal sensitivity loss per sky point."
+        )
+
+    # Generate enough layers to fully cover sky_radius, plus one buffer ring
+    min_spacing = min(spacing_alpha, spacing_delta)
+    num_layers = int(np.ceil(sky_radius / min_spacing)) + 1
+
+    grid = hexagonal_grid(num_layers)
     all_points = [pt for layer in sorted(grid) for pt in grid[layer]]
 
-    d_alpha = np.array([i * spacing_alpha for _, _, i, j in all_points])
-    d_delta = np.array([j * spacing_delta for _, _, i, j in all_points])
+    # Keep only points within sky_radius
+    filtered = [
+        (i, j)
+        for _, _, i, j in all_points
+        if np.sqrt((i * spacing_alpha) ** 2 + (j * spacing_delta) ** 2) <= sky_radius
+    ]
+
+    d_alpha = np.array([i * spacing_alpha for i, j in filtered])
+    d_delta = np.array([j * spacing_delta for i, j in filtered])
     return d_alpha, d_delta

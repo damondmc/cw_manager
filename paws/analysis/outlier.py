@@ -66,8 +66,9 @@ class ResultAnalysisManager:
         mean2f_th,
         num_toplist,
         freq_deriv_order,
-        work_in_local_dir,
-        max_workers,
+        n_sky=1,
+        work_in_local_dir=False,
+        max_workers=32,
         read_inj=False,
         separate_saturated=False,
         desc="Processing",
@@ -77,7 +78,10 @@ class ResultAnalysisManager:
         if np.isscalar(mean2f_th):
             thresholds = [mean2f_th] * len(job_indices)
         else:
-            thresholds = mean2f_th  # Follow-up provides an array of thresholds
+            # Follow-up provides an array of thresholds (one per parameter point); expand for sky points
+            thresholds = (
+                np.repeat(mean2f_th, n_sky).tolist() if n_sky > 1 else list(mean2f_th)
+            )
 
         outlier_table_list = []
         sat_outlier_table_list = []
@@ -124,33 +128,58 @@ class ResultAnalysisManager:
             )
 
         # 4. Safe Sequential Unpacking
-        missing_files = 0
-        for res in results:
-            _, job_idx, _outlier, _inj_param, spacing, is_sat = res
+        # Group results: 1 item per group when n_sky=1, n_sky items per parameter point otherwise.
+        # Candidates from all sky-point jobs in a group are pooled and trimmed to num_toplist.
+        if n_sky == 1:
+            groups = [[r] for r in results]
+        else:
+            n_groups = len(results) // n_sky
+            groups = [results[g * n_sky : (g + 1) * n_sky] for g in range(n_groups)]
 
-            if _outlier is not None:
-                info_list.append((freq, job_idx, len(_outlier), is_sat))
+        missing_files = 0
+        for group in groups:
+            group_outliers = []
+            group_inj = None
+            group_spacing = None
+            first_job_idx = group[0][1]
+
+            for res in group:
+                _, job_idx, _outlier, _inj_param, spacing, is_sat = res
+                if _outlier is None:
+                    missing_files += 1
+                    continue
+                if len(_outlier) > 0:
+                    group_outliers.append(_outlier)
+                if group_inj is None and _inj_param is not None:
+                    group_inj = _inj_param
+                if group_spacing is None and spacing is not None:
+                    group_spacing = spacing
+
+            if group_outliers:
+                # Pool all candidates, keep top num_toplist by mean2F
+                merged = vstack(group_outliers)
+                merged.sort("mean2F")
+                merged.reverse()
+                merged = merged[:num_toplist]
+                is_sat = int(len(merged) >= num_toplist)
+                info_list.append((freq, first_job_idx, len(merged), is_sat))
 
                 if separate_saturated and is_sat == 1:
-                    sat_outlier_table_list.append(
-                        _outlier[:1]
-                    )  # Keep ONLY the loudest 1
+                    sat_outlier_table_list.append(merged[:1])  # Keep ONLY the loudest 1
                 else:
-                    outlier_table_list.append(_outlier)
+                    outlier_table_list.append(merged)
 
-                if _inj_param is not None and len(_outlier) > 0:
-                    inj_table_list.append(_inj_param)
+                if group_inj is not None:
+                    inj_table_list.append(group_inj)
 
-                if spacing is not None:
+                if group_spacing is not None:
                     if not max_spacing:
-                        max_spacing = spacing.copy()
+                        max_spacing = group_spacing.copy()
                     else:
-                        for k, v in spacing.items():
+                        for k, v in group_spacing.items():
                             max_spacing[k] = max(max_spacing.get(k, 0), v)
             else:
-                if is_sat == 0:
-                    missing_files += 1
-                info_list.append((freq, job_idx, 0, is_sat))
+                info_list.append((freq, first_job_idx, 0, 0))
 
         if missing_files > 0:
             print(f"Warning: {missing_files} files missing for {desc} {freq}Hz")
@@ -260,6 +289,7 @@ class ResultAnalysisManager:
         num_toplist=1000,
         stage="search",
         freq_deriv_order=2,
+        n_sky=1,
         cluster=False,
         work_in_local_dir=False,
         separate_saturated=False,
@@ -283,7 +313,8 @@ class ResultAnalysisManager:
                 "this may incorrectly separate valid bands as saturated."
             )
 
-        job_indices = list(range(1, n_jobs + 1))
+        # Each parameter point maps to n_sky consecutive Weave jobs
+        job_indices = list(range(1, n_jobs * n_sky + 1))
 
         # 2. Collect data using your central engine
         outliers, sat_outliers, inj_data_list, info_list, max_spacing = (
@@ -295,8 +326,9 @@ class ResultAnalysisManager:
                 mean2f_th,
                 num_toplist,
                 freq_deriv_order,
-                work_in_local_dir,
-                max_workers,
+                n_sky=n_sky,
+                work_in_local_dir=work_in_local_dir,
+                max_workers=max_workers,
                 read_inj=is_injection,
                 separate_saturated=separate_saturated,
                 desc=stage.capitalize(),

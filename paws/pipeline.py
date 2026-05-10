@@ -134,6 +134,7 @@ def determine_efficiency(
     target,
     freq,
     freq_deriv_order,
+    n_sky,
     n_seg,
     num_toplist,
     sft_files,
@@ -189,8 +190,9 @@ def determine_efficiency(
         )
 
     # Analysis
-    n_inj = injection_data.size
-    outlier_file_path = result_manager.make_injection_outlier(
+    # injection_data has n_inj * n_sky rows; recover actual n_inj
+    n_inj = injection_data.size // n_sky
+    outlier_file_path = result_manager.make_outlier(
         taskname,
         freq,
         mean2f_th,
@@ -198,8 +200,10 @@ def determine_efficiency(
         num_toplist=num_toplist,
         stage=stage,
         freq_deriv_order=freq_deriv_order,
+        n_sky=n_sky,
         cluster=cluster,
         work_in_local_dir=work_in_local_dir,
+        is_injection=True,
     )
 
     if not save_intermediate:

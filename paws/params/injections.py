@@ -3,7 +3,7 @@ from astropy.io import fits
 from astropy.table import Table
 
 from paws.definitions import ext_param_name, phase_param_name
-from paws.params.sky import sky_sampler
+from paws.params.sky import sky_hex_offsets, sky_sampler
 
 
 class InjectionParamGenerator:
@@ -85,53 +85,65 @@ class InjectionParamGenerator:
         inj_data,
         freq_deriv_order,
         n_spacing=1,
+        sky_radius=0,
+        spacing_alpha=None,
+        spacing_delta=None,
     ):
         """
         Generates the small search windows around the injections for Weave.
 
-        :param spacing_info: Can be a file path (str/Path) containing header info, or a dict.
+        When sky_radius > 0 and spacings are provided, each injection gets n_sky rows
+        (one per hex-grid sky point within sky_radius), ordered as:
+        inj_0/sky_0, inj_0/sky_1, ..., inj_1/sky_0, inj_1/sky_1, ...
+        Consecutive blocks of n_sky rows map to the same injection.
         """
         freq_names, deriv_names = phase_param_name(freq_deriv_order)
 
-        # Prepare Table
-        n_rows = len(inj_data)
+        if sky_radius > 0 and spacing_alpha is not None and spacing_delta is not None:
+            d_alpha, d_delta = sky_hex_offsets(sky_radius, spacing_alpha, spacing_delta)
+            n_sky = len(d_alpha)
+        else:
+            d_alpha, d_delta = np.array([0.0]), np.array([0.0])
+            n_sky = 1
+
+        n_inj = len(inj_data)
+        n_rows = n_inj * n_sky
         out_cols = freq_names + deriv_names + ["alpha", "dalpha", "delta", "ddelta"]
         search_range = Table(np.zeros((n_rows, len(out_cols))), names=out_cols)
 
+        # Expand injection data: repeat each row n_sky times
+        inj_idx = np.repeat(np.arange(n_inj), n_sky)
+        sky_idx = np.tile(np.arange(n_sky), n_inj)
+
         # 1. Frequency & Spindowns
-        # f0
         df = spacing["df"]
-        search_range["freq"] = inj_data["Freq"] - n_spacing * df
+        search_range["freq"] = inj_data["Freq"][inj_idx] - n_spacing * df
         search_range["df"] = 2 * n_spacing * df
 
-        # f1
         if freq_deriv_order >= 1:
             df1 = spacing["df1dot"]
-            search_range["f1dot"] = inj_data["f1dot"] - n_spacing * df1
+            search_range["f1dot"] = inj_data["f1dot"][inj_idx] - n_spacing * df1
             search_range["df1dot"] = 2 * n_spacing * df1
 
-        # f2
         if freq_deriv_order >= 2:
             df2 = spacing["df2dot"]
-            search_range["f2dot"] = inj_data["f2dot"] - n_spacing * df2
+            search_range["f2dot"] = inj_data["f2dot"][inj_idx] - n_spacing * df2
             search_range["df2dot"] = 2 * n_spacing * df2
 
-        # f3
         if freq_deriv_order >= 3:
             df3 = spacing["df3dot"]
-            search_range["f3dot"] = inj_data["f3dot"] - n_spacing * df3
+            search_range["f3dot"] = inj_data["f3dot"][inj_idx] - n_spacing * df3
             search_range["df3dot"] = 2 * n_spacing * df3
 
-        # f4
         if freq_deriv_order >= 4:
             df4 = spacing["df4dot"]
-            search_range["f4dot"] = inj_data["f4dot"] - n_spacing * df4
+            search_range["f4dot"] = inj_data["f4dot"][inj_idx] - n_spacing * df4
             search_range["df4dot"] = 2 * n_spacing * df4
 
-        # 2. Sky
-        search_range["alpha"] = alpha
+        # 2. Sky: offset each sky point from the nominal position
+        search_range["alpha"] = alpha + d_alpha[sky_idx]
         search_range["dalpha"] = dalpha
-        search_range["delta"] = delta
+        search_range["delta"] = delta + d_delta[sky_idx]
         search_range["ddelta"] = ddelta
 
         return fits.BinTableHDU(search_range)
@@ -151,25 +163,28 @@ class InjectionParamGenerator:
         freq_deriv_order=2,
         inj_freq_deriv_order=4,
         sky_radius=0,
+        spacing_alpha=None,
+        spacing_delta=None,
     ):
         """
         High-level wrapper to generate both Injection Parameters and Search Ranges.
 
-        :param non_sat_bands: Array of non-saturated band frequencies.
-        :param spacing_info: Path to FITS file with spacing info OR a dictionary.
+        When sky_radius > 0 with spacings provided, each injection is searched at n_sky
+        hex-grid sky points within the cap. Both returned dicts contain n_inj * n_sky rows
+        (injection params replicated per sky point). Consecutive blocks of n_sky rows belong
+        to the same injection, matching what ResultAnalysisManager.make_outlier expects.
         """
-
         if freq_deriv_order > 4:
             print("Error: frequency derivative order larger than 4.")
         if inj_freq_deriv_order > 4:
             print("Error: Injection frequency derivative order larger than 4.")
 
-        # 1. Generate Injection Table
+        # 1. Generate Injection Table (n_inj rows)
         ip_hdu = self.generate_injection_table(
             alpha, delta, non_sat_bands, h0, n_inj, inj_freq_deriv_order, sky_radius
         )
 
-        # 2. Generate Search Range Table
+        # 2. Generate Search Range Table (n_inj * n_sky rows when sky_layers > 0)
         sp_hdu = self.generate_search_range_table(
             alpha,
             dalpha,
@@ -179,7 +194,16 @@ class InjectionParamGenerator:
             ip_hdu.data,
             freq_deriv_order,
             n_spacing,
+            sky_radius=sky_radius,
+            spacing_alpha=spacing_alpha,
+            spacing_delta=spacing_delta,
         )
+
+        # 3. Replicate injection params to match search range row count
+        if len(sp_hdu.data) > n_inj:
+            n_sky = len(sp_hdu.data) // n_inj
+            inj_idx = np.repeat(np.arange(n_inj), n_sky)
+            ip_hdu = fits.BinTableHDU(Table(ip_hdu.data)[inj_idx])
 
         injParamDict = {str(freq): ip_hdu}
         searchParamDict = {str(freq): sp_hdu}

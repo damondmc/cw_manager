@@ -315,6 +315,8 @@ class WorkflowManager:
         mean2f_th,
         non_sat_bands,
         sky_radius,
+        spacing_alpha,
+        spacing_delta,
         cluster,
         work_in_local_dir,
         save_intermediate,
@@ -335,6 +337,10 @@ class WorkflowManager:
             f"--sky_radius {sky_radius} --n_cpus {request_cpu}"
         )
 
+        if spacing_alpha is not None:
+            arg_list_string += (
+                f" --spacing_alpha {spacing_alpha} --spacing_delta {spacing_delta}"
+            )
         if cluster:
             arg_list_string += " --cluster"
         if work_in_local_dir:
@@ -394,6 +400,8 @@ class WorkflowManager:
         inj_freq_deriv_order=4,
         num_toplist=1,
         sky_radius=1e-5,
+        spacing_alpha=None,
+        spacing_delta=None,
         h0_est=6e-26,
         n_inj=64,
         request_memory="4GB",
@@ -439,6 +447,8 @@ class WorkflowManager:
             mean2f_th=mean2f_th,
             non_sat_bands=non_sat_bands,
             sky_radius=sky_radius,
+            spacing_alpha=spacing_alpha,
+            spacing_delta=spacing_delta,
             cluster=cluster,
             work_in_local_dir=work_in_local_dir,
             save_intermediate=save_intermediate,

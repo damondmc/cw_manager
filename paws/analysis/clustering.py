@@ -5,10 +5,11 @@ from ..definitions import phase_param_name
 # Data Analysis & Clustering
 # =============================================================================
 
+
 def clustering(data, spacing, cluster_n_spacing=4.0):
     """
     Clusters outliers based on spatial proximity in phase parameter space.
-    
+
     Parameters:
         data (astropy.table.Table): The outlier data.
         spacing (numpy.ndarray): Spacing values for each data point.
@@ -21,13 +22,13 @@ def clustering(data, spacing, cluster_n_spacing=4.0):
     # Extract phase parameter names
     freq_deriv_order = len(spacing) - 1
     fn, dfn = phase_param_name(freq_deriv_order)
-    
+
     # Create arrays for coordinates and spacings
     _data = np.column_stack([data[key] for key in fn])
     gridsize = np.array([spacing[key] for key in dfn])
 
     # Retrieve loudness
-    loudness = data['mean2F']
+    loudness = data["mean2F"]
 
     # Sort descending by loudness
     sorted_indices = np.argsort(-loudness)
@@ -46,7 +47,7 @@ def clustering(data, spacing, cluster_n_spacing=4.0):
         within_dim_indices = []
 
         # Check distance in every dimension
-        for dim in range(freq_deriv_order+1):
+        for dim in range(freq_deriv_order + 1):
             r0 = cluster_n_spacing * gridsize[dim]
             distances_dim = np.abs(_data[:, dim] - center[dim])
             within_dim = np.where(distances_dim <= r0)[0]
@@ -65,5 +66,5 @@ def clustering(data, spacing, cluster_n_spacing=4.0):
     centers_idx = np.array(centers_idx)
     cluster_size = np.array(cluster_size)
 
-    print(f'{len(data)} outliers are grouped to {len(centers_idx)} clusters.')
+    print(f"{len(data)} outliers are grouped to {len(centers_idx)} clusters.")
     return centers_idx, cluster_size, cluster_member

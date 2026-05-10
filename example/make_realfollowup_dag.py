@@ -1,0 +1,150 @@
+import yaml
+from astropy.io import fits
+from tqdm import tqdm
+
+from paws.filepaths import PathManager
+from paws.workflow.manager import WorkflowManager
+from paws.definitions import phase_param_name
+from paws.params.models import PowerLawModel
+from paws.params.followup import FollowUpParamGenerator
+
+# 1. Load Configs
+with open("/home/hoitim.cheung/galacticCenter/config/config.yaml", "r") as f:
+    config = yaml.safe_load(f)
+
+home_dir = config["home_dir"]
+
+with open(f"{home_dir}config/gal.yaml", "r") as f:
+    target = yaml.safe_load(f)
+
+paths = PathManager(config, target)
+manager = WorkflowManager(config, target)
+
+fmin = 20
+fmax = 400
+use_osg = True
+use_osdf = True
+cluster = True
+
+# 2. Set up parameters for follow-up generation
+
+################################################
+prev_stage = "search-0"
+prev_tcoh = 5
+prev_freq_deriv_order = 2
+################################################
+
+################################################
+stage = "followup-1"
+tcoh = 10
+freq_deriv_order = 2
+################################################
+
+################################################
+inj_freq_deriv_order = 4
+ref_time = 1395617439
+n_seg = 54
+################################################
+
+extra_stats = "coh2F_det,mean2F,coh2F_det,mean2F_det"
+weave_exe = config["executables"]["weave"]
+num_top_list = config["num_toplist"]
+metric_file = "osdf:///igwn/cit/staging/hoitim.cheung/metricSetup/o4ab_t10_s2.fts"
+
+_, freq_deriv_param_names = phase_param_name(prev_freq_deriv_order)
+
+skipped_freqs = []
+
+dag_list_path = f"{home_dir}dagFiles/{stage}_{target['name']}_dag{fmin}-{fmax}Hz.txt"
+
+# todo_list = [59, 89, 97, 164, 177, 180, 200,
+#              212, 213, 239, 267, 274, 275, 277,
+#              280, 281, 283, 284, 298, 299, 300, 301,
+#              302, 303, 305, 306, 307, 314, 315, 322, 360, 399]
+
+with open(dag_list_path, "w") as f_daglist:
+    for freq in tqdm(range(fmin, fmax), desc="Generating DAGs", total=fmax - fmin):
+        # for freq in tqdm(todo_list, desc="Generating DAGs", total=len(todo_list)):
+
+        sft_files = []
+        files = paths.sft_ensemble(freq, use_osdf=use_osdf)
+        sft_files.extend(files)  # Use extend, not append, to flatten the list
+
+        data_taskname = f"{target['name']}_{prev_stage}_TCoh{prev_tcoh}_O{prev_freq_deriv_order}_{freq}Hz"
+
+        data = []
+
+        try:
+            data_file = paths.outlier_file(
+                freq, data_taskname, prev_stage, cluster=cluster
+            )
+            data = fits.getdata(data_file, ext=1)
+
+        except FileNotFoundError as e:
+            print(f"Error loading data for frequency {freq} Hz: {e}")
+
+        if len(data) == 0:
+            print(
+                f"No outliers found for frequency {freq} Hz. Skipping follow-up generation."
+            )
+            skipped_freqs.append(freq)
+            continue
+
+        df_grid = [
+            fits.getval(data_file, param_name, 0)
+            for param_name in freq_deriv_param_names
+        ]
+
+        _, freq_deriv_names = phase_param_name(prev_freq_deriv_order)
+        if len(df_grid) != len(freq_deriv_names):
+            raise ValueError(
+                f"Length of df_grid ({len(df_grid)}) does not match number of frequency derivative names ({len(freq_deriv_names)})"
+            )
+
+        df_grid = {name: df_grid[i] for i, name in enumerate(freq_deriv_names)}
+
+        if freq < 200:
+            tau = 86400 * 365.25 * 300
+        else:
+            tau = 86400 * 365.25 * (300 + (freq - 199) * 0.5)
+
+        model = PowerLawModel(nc_min=config["nc_min"], nc_max=config["nc_max"], tau=tau)
+        followup_generator = FollowUpParamGenerator(model)
+
+        search_data = followup_generator.generate_parameter(
+            alpha=target["alpha"],
+            dalpha=target["dalpha"],
+            delta=target["delta"],
+            ddelta=target["ddelta"],
+            data=data,
+            old_freq_deriv_order=prev_freq_deriv_order,
+            new_freq_deriv_order=freq_deriv_order,
+            spacing=df_grid,
+            n_spacing=config["followup_n_spacing"],
+        )
+
+        # --- Make DAG ---
+        taskname = f"{target['name']}_{stage}_TCoh{tcoh}_O{freq_deriv_order}_{freq}Hz"
+
+        dag_file = manager.make_search_dag(
+            taskname,
+            freq,
+            search_data.data,
+            num_top_list=num_top_list,
+            stage=stage,
+            freq_deriv_order=freq_deriv_order,
+            n_seg=n_seg,
+            sft_files=sft_files,
+            metric_file=metric_file,
+            request_memory="8GB",
+            request_disk="8GB",
+            request_cpu=1,
+            use_osg=use_osg,
+            use_osdf=use_osdf,
+            tasks_per_job=1000,
+        )
+
+        f_daglist.write(f"{dag_file}\n")
+
+if skipped_freqs:
+    print(f"Skipped frequencies bands: {skipped_freqs}")

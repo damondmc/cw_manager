@@ -100,7 +100,7 @@ def main():
         default=[20.0, 20.1],
         help="Non-saturated frequency bands to use for injections",
     )
-    parser.add_argument("--sky_radius", type=float, default=1e-4)
+    parser.add_argument("--sky_uncertainty", type=float, default=1e-4)
     parser.add_argument("--cluster", action="store_true")
     parser.add_argument("--work_in_local_dir", action="store_true")
     parser.add_argument("--save_intermediate", action="store_true")
@@ -121,7 +121,7 @@ def main():
     h0_est = args.h0_est
     mean2f_th = args.mean2f_th
     non_sat_bands = args.non_sat_bands
-    sky_radius = args.sky_radius
+    sky_uncertainty = args.sky_uncertainty
     num_toplist = args.num_toplist
 
     non_sat_bands = np.array(non_sat_bands)
@@ -192,13 +192,13 @@ def main():
         n_spacing=config["followup_n_spacing"],
         inj_freq_deriv_order=inj_freq_deriv_order,
         freq_deriv_order=freq_deriv_order,
-        sky_radius=sky_radius,
+        sky_uncertainty=sky_uncertainty,
     )
 
     # 4. Iterative Injection Loop
     h0_arr, eff_arr = [], []  # h0 and efficiency arrays
 
-    factors = [0.5, 0.7, 1.0, 1.5]  # Initial spread around estimate
+    factors = [0.4, 0.6, 0.8, 1.0, 1.3]  # Initial spread around estimate
 
     log_section("EFFICIENCY LOOP START")
     for factor in factors:
@@ -321,7 +321,7 @@ def main():
     # 7. Update FITS Header with Results
     with fits.open(outlier_file_path, mode="update") as hdul:
         # Header info
-        hdul[0].header["HIERARCH sky_radius"] = sky_radius
+        hdul[0].header["HIERARCH sky_uncertainty"] = sky_uncertainty
         hdul[0].header["h95"] = h95
         hdul[0].header["dh95"] = h95 * dx
         hdul[0].header[f"p{args.n_inj}"] = round(eff * 100, 2)

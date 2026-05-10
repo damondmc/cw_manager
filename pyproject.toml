@@ -1,0 +1,4 @@
+[tool.ruff]
+exclude = ["example/"]
+
+[tool.ruff.lint]

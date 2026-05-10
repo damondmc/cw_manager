@@ -11,15 +11,15 @@ flowchart TD
 
     E -->|h95| F([make_inj_dag.py\ninject with h0 = h95])
     F --> G[/Weave injection jobs/]
-    G --> H([make_inj_outliers.py\n2F increase criteria])
+    G --> H([make_inj_outliers.py\nfollowup seeds])
 
     H --> I([make_followup_dag.py\nis_injection=True])
     I --> J[/Weave jobs/]
-    J --> K([make_followup_outlier.py\nget 2F criteria])
+    J --> K([make_followup_outlier.py\nis_injection=True])
 
-    K --> M([make_followup_dag.py\nis_injection=False])
+    K --> |(2F - 4) criteria| M([make_followup_dag.py\nis_injection=False])
     M --> N[/Weave jobs/]
-    N --> O([make_followup_outlier.py])
+    N --> O([make_followup_outlier.py\nis_injection=False])
 
     O -->|tcoh = tobs\nor no outliers| P([complete])
     O -->|else| Q([tcoh ++])

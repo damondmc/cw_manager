@@ -17,7 +17,7 @@ flowchart TD
     I --> J[/Weave jobs/]
     J --> K([make_followup_outlier.py\nis_injection=True])
 
-    K --> |(2F - 4) criteria| M([make_followup_dag.py\nis_injection=False])
+    K -->|2F - 4 criteria| M([make_followup_dag.py\nis_injection=False])
     M --> N[/Weave jobs/]
     N --> O([make_followup_outlier.py\nis_injection=False])
 

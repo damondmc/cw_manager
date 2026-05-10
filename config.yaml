@@ -22,6 +22,9 @@ sft_dir: /osdf/igwn/cit/staging/hoitim.cheung/SFTs/o4ab_data/SFTs
 # --- Computing label ---
 acc_group: ligo.prod.o4.cw.directedisolated.semicoherent
 
+# --- Observation ---
+ref_time: 1395617439  # GPS reference time
+
 # --- Search Configuration Parameters ---
 f0_band: 0.025   # Resolution of search in frequency
 semi_mm: 0.2    # Maximum accepted mismatch of the semicoherent metric (over the whole observation time)

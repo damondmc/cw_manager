@@ -25,8 +25,7 @@ fmax = 400
 use_osg = True
 use_osdf = True
 cluster = True
-
-# 2. Set up parameters for follow-up generation
+is_injection = False  # True to carry injections from prev stage into DAG
 
 ################################################
 prev_stage = "search-0"
@@ -42,14 +41,14 @@ freq_deriv_order = 2
 
 ################################################
 inj_freq_deriv_order = 4
-ref_time = 1395617439
 n_seg = 54
+tasks_per_job = 1000
 ################################################
 
 extra_stats = "coh2F_det,mean2F,coh2F_det,mean2F_det"
 weave_exe = config["executables"]["weave"]
 num_top_list = config["num_toplist"]
-metric_file = "osdf:///igwn/cit/staging/hoitim.cheung/metricSetup/o4ab_t10_s2.fts"
+metric_file = f"osdf:///igwn/cit/staging/hoitim.cheung/metricSetup/o4ab_t{tcoh}_s{freq_deriv_order}.fts"
 
 _, freq_deriv_param_names = phase_param_name(prev_freq_deriv_order)
 
@@ -57,29 +56,24 @@ skipped_freqs = []
 
 dag_list_path = f"{home_dir}dagFiles/{stage}_{target['name']}_dag{fmin}-{fmax}Hz.txt"
 
-# todo_list = [59, 89, 97, 164, 177, 180, 200,
-#              212, 213, 239, 267, 274, 275, 277,
-#              280, 281, 283, 284, 298, 299, 300, 301,
-#              302, 303, 305, 306, 307, 314, 315, 322, 360, 399]
-
 with open(dag_list_path, "w") as f_daglist:
     for freq in tqdm(range(fmin, fmax), desc="Generating DAGs", total=fmax - fmin):
-        # for freq in tqdm(todo_list, desc="Generating DAGs", total=len(todo_list)):
-
         sft_files = []
         files = paths.sft_ensemble(freq, use_osdf=use_osdf)
-        sft_files.extend(files)  # Use extend, not append, to flatten the list
+        sft_files.extend(files)
 
         data_taskname = f"{target['name']}_{prev_stage}_TCoh{prev_tcoh}_O{prev_freq_deriv_order}_{freq}Hz"
 
         data = []
+        injection_data = None
 
         try:
             data_file = paths.outlier_file(
                 freq, data_taskname, prev_stage, cluster=cluster
             )
             data = fits.getdata(data_file, ext=1)
-
+            if is_injection:
+                injection_data = fits.getdata(data_file, extname="injection")
         except FileNotFoundError as e:
             print(f"Error loading data for frequency {freq} Hz: {e}")
 
@@ -123,7 +117,6 @@ with open(dag_list_path, "w") as f_daglist:
             n_spacing=config["followup_n_spacing"],
         )
 
-        # --- Make DAG ---
         taskname = f"{target['name']}_{stage}_TCoh{tcoh}_O{freq_deriv_order}_{freq}Hz"
 
         dag_file = manager.make_search_dag(
@@ -141,10 +134,12 @@ with open(dag_list_path, "w") as f_daglist:
             request_cpu=1,
             use_osg=use_osg,
             use_osdf=use_osdf,
-            tasks_per_job=1000,
+            inj_params=injection_data,
+            inj_freq_deriv_order=inj_freq_deriv_order if is_injection else None,
+            tasks_per_job=tasks_per_job,
         )
 
         f_daglist.write(f"{dag_file}\n")
 
 if skipped_freqs:
-    print(f"Skipped frequencies bands: {skipped_freqs}")
+    print(f"Skipped frequencies: {skipped_freqs}")

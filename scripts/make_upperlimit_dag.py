@@ -24,14 +24,22 @@ paths = PathManager(config=config, target=target)
 
 obs_day = 630
 coh_day = 5
-stage = "upperlimit-v2"
+stage = "upperlimit-1pc"
 freq_deriv_order = 2
 inj_freq_deriv_order = 4
+prev_stage = "search-0"
+prev_tcoh = 5
+prev_freq_deriv_order = 2
+sky_radius = 1.25e-4
+spacing_alpha = sky_radius / 1.5
+spacing_delta = sky_radius / 1.5
+n_inj = 200
+num_toplist = 1
 
 fmin, fmax = 20, 400
 metric_file = "osdf:///igwn/cit/staging/hoitim.cheung/metricSetup/Start1368970000_TCoh432000_N107_Spin2.fts"
 
-exe = "osdf:///igwn/cit/staging/hoitim.cheung/scripts/calUL.py"
+exe = "osdf:///igwn/cit/staging/hoitim.cheung/scripts/upperlimit.py"
 
 image = "osdf:///igwn/cit/staging/hoitim.cheung/images/paws_gc.sif"
 
@@ -53,9 +61,9 @@ with open(dag_list_path, "w") as f_daglist:
         files = paths.sft_ensemble(freq)
         sft_files.extend(files)  # Use extend, not append, to flatten the list
 
-        data_taskname = f"GalacticCenter_search-0_TCoh5_O2_{freq}Hz"
+        data_taskname = f"{target['name']}_{prev_stage}_TCoh{prev_tcoh}_O{prev_freq_deriv_order}_{freq}Hz"
 
-        data_file = paths.outlier_file(freq, data_taskname, "search-0", cluster=True)
+        data_file = paths.outlier_file(freq, data_taskname, prev_stage, cluster=True)
 
         df_grid = [
             fits.getval(data_file, param_name, 0)
@@ -74,7 +82,9 @@ with open(dag_list_path, "w") as f_daglist:
             continue
         # --- Make DAG ---
         # Generate task name
-        taskname = f"GalacticCenter_{stage}_TCoh5_O2_{freq}Hz"
+        taskname = (
+            f"{target['name']}_{stage}_TCoh{coh_day}_O{freq_deriv_order}_{freq}Hz"
+        )
 
         dagfile = manager.make_upperlimit_dag(
             config_file,
@@ -89,13 +99,13 @@ with open(dag_list_path, "w") as f_daglist:
             non_sat_bands,
             exe,
             df_grid=df_grid,
-            inj_freq_deriv_order=4,
-            num_toplist=1,
-            sky_radius=1.25e-4,
-            spacing_alpha=1.25e-4 / 1.5,
-            spacing_delta=1.25e-4 / 1.5,
+            inj_freq_deriv_order=inj_freq_deriv_order,
+            num_toplist=num_toplist,
+            sky_radius=sky_radius,
+            spacing_alpha=spacing_alpha,
+            spacing_delta=spacing_delta,
             h0_est=h0_est,
-            n_inj=200,
+            n_inj=n_inj,
             request_memory="16GB",
             request_disk="6GB",
             request_cpu=8,

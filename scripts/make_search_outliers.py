@@ -9,6 +9,8 @@ from astropy.io import fits
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
+from paws.analysis.tools import detection_stat_threshold
+
 # 1. Load Configs
 with open("/home/hoitim.cheung/galacticCenter/config/config.yaml", "r") as f:
     config = yaml.safe_load(f)
@@ -24,7 +26,10 @@ THREADS = 32
 fmin, fmax = 20, 400
 f0_band = config["f0_band"]
 
+stage = "search-0"
+coh_day = 5
 freq_deriv_order = 2
+n_seg = 107
 n_jobs = np.zeros(fmax - fmin)
 
 for i, freq in enumerate(range(fmin, fmax)):
@@ -60,12 +65,13 @@ def get_header_val(args):
     return fits.getheader(filename)["NSEMITPL"]
 
 
-stage = "search-0"
 n_temp = np.zeros(n_jobs.size)
 
 with ThreadPoolExecutor(max_workers=THREADS) as executor:
     for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax - fmin)):
-        taskname = f"GalacticCenter_search-0_TCoh5_O2_{freq}Hz"
+        taskname = (
+            f"{target['name']}_{stage}_TCoh{coh_day}_O{freq_deriv_order}_{freq}Hz"
+        )
 
         args_list = [
             (freq, taskname, job_index, stage) for job_index in range(1, n_jobs[i] + 1)
@@ -77,12 +83,10 @@ with ThreadPoolExecutor(max_workers=THREADS) as executor:
         print(f"{freq} Hz: ntemp={n_temp[i]}")
 
 
-from paws.analysis.tools import detection_stat_threshold
-
 for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax - fmin)):
-    taskname = f"GalacticCenter_search-0_TCoh5_O2_{freq}Hz"
+    taskname = f"{target['name']}_{stage}_TCoh{coh_day}_O{freq_deriv_order}_{freq}Hz"
 
-    mean2f_th = detection_stat_threshold(n_temp[i], 107)
+    mean2f_th = detection_stat_threshold(n_temp[i], n_seg)
 
     result_file = result_manager.make_outlier(
         taskname,

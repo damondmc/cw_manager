@@ -24,6 +24,9 @@ fmin, fmax = 186, 400
 f0_band = config["f0_band"]
 cluster = True
 
+prev_stage = "injections-2"
+prev_tcoh = 20
+prev_freq_deriv_order = 3
 stage = "injections-3"
 tcoh = 40
 freq_deriv_order = 3
@@ -34,11 +37,11 @@ for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax - fmin)):
         print(f"Skipping saturated band {freq} Hz")
         continue
 
-    prev_taskname = f"GalacticCenter_injections-2_TCoh20_O3_{freq}Hz"
+    prev_taskname = f"{target['name']}_{prev_stage}_TCoh{prev_tcoh}_O{prev_freq_deriv_order}_{freq}Hz"
 
     taskname = f"{target['name']}_{stage}_TCoh{tcoh}_O{freq_deriv_order}_{freq}Hz"
 
-    data_file = paths.outlier_file(freq, prev_taskname, "injections-2", cluster=cluster)
+    data_file = paths.outlier_file(freq, prev_taskname, prev_stage, cluster=cluster)
 
     mean2f_th = fits.getdata(data_file)["mean2F threshold"]
     mean2f_th = np.zeros_like(mean2f_th)
@@ -58,27 +61,3 @@ for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax - fmin)):
         is_injection=True,
         max_workers=THREADS,
     )
-
-# for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax-fmin)):
-
-#     prev_taskname = f'GalacticCenter_search-0_TCoh5_O2_{freq}Hz'
-
-#     taskname = f"{target['name']}_{stage}_TCoh{tcoh}_O{freq_deriv_order}_{freq}Hz"
-
-#     data_file = paths.outlier_file(freq, prev_taskname, 'search-0', cluster=True)
-
-#     mean2f_th = fits.getval(data_file, 'mean2F_th', 0)
-
-#     result_file = result_manager.make_outlier(
-#         taskname,
-#         freq,
-#         mean2f_th,
-#         n_jobs,
-#         num_toplist=1,
-#         stage=stage,
-#         freq_deriv_order=freq_deriv_order,
-#         cluster=cluster,
-#         work_in_local_dir=False,
-#         separate_saturated=True,
-#         max_workers=THREADS
-#     )

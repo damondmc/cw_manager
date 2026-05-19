@@ -2,27 +2,17 @@ Bootstrap: docker
 From: ubuntu:22.04
 
 %environment
-    # set up environment for when using the container
-    . /opt/conda/etc/profile.d/conda.sh
-    conda activate
-%files 
-    /home/hoitim.cheung/paws/paws
-    /home/hoitim.cheung/paws/paws /opt
+    export PATH="/opt/paws/.venv/bin:/root/.local/bin:$PATH"
+    export VIRTUAL_ENV="/opt/paws/.venv"
+
 %post
     # base os
     apt-get update -y
-    apt-get install -y build-essential wget
-    
-    # install miniconda
-    wget https://repo.anaconda.com/miniconda/Miniconda3-py310_23.5.2-0-Linux-x86_64.sh
-    bash Miniconda3-py310_23.5.2-0-Linux-x86_64.sh -b -f -p /opt/conda
-    rm Miniconda3-py310_23.5.2-0-Linux-x86_64.sh
+    apt-get install -y build-essential curl git python3 python3-dev
 
-    # install conda components - add the packages you need here
-    . /opt/conda/etc/profile.d/conda.sh
-    conda activate 
-    python -m pip install /opt/paws/.
+    # install uv
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 
-
-    # Install Miniconda with Python 3.10
-    
+    # clone repo and install with locked dependencies
+    git clone https://github.com/damondmc/paws /opt/paws
+    cd /opt/paws && /root/.local/bin/uv sync --frozen

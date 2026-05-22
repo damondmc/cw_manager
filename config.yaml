@@ -38,5 +38,3 @@ followup_n_spacing: 8.0  # For injection and followUp
 # --- Braking index ---
 nc_min: 2.0
 nc_max: 7.0
-
-

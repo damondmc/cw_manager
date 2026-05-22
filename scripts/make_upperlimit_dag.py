@@ -1,4 +1,4 @@
-# /home/hoitim.cheung/.conda/envs/paws/bin/python
+#!/opt/paws/.venv/bin/python
 import numpy as np
 import yaml
 from paws.workflow.manager import WorkflowManager

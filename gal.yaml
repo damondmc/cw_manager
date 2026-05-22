@@ -5,7 +5,7 @@
 name: GalacticCenter
 
 # Age in years
-age: 600 
+age: 600
 
 # Sky Position (Radians)
 alpha: 4.649850632788216   # RA

@@ -7,7 +7,7 @@ dist/
 __pycache__/
 *.py[cod]
 *$py.class
-   
+
 # Jupyter Notebook checkpoint
 .ipynb_checkpoints/
 paws.sif

@@ -5,6 +5,22 @@ PAWS is a comprehensive Python wrapper designed to automate and manage directed 
 
 ## 📦 Installation
 
+Using [uv](https://docs.astral.sh/uv/) (recommended):
+
+```bash
+uv sync
 ```
-python -m pip install .
+
+Or with pip:
+
+```bash
+pip install .
+```
+
+## 🛠️ Container Build
+
+To build the Apptainer image for OSG deployment:
+
+```bash
+apptainer build paws.sif paws.def
 ```

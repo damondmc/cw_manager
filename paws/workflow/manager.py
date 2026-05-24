@@ -1,12 +1,14 @@
 import sys
 import time
 from pathlib import Path
+
 from tqdm import tqdm
 
-from .writer import write_search_subfile, write_search_dagfile
-from paws.io import make_dir
-from paws.definitions import phase_param_name, ext_param_name
+from paws.definitions import ext_param_name, phase_param_name
 from paws.filepaths import PathManager
+from paws.io import make_dir
+
+from .writer import write_search_dagfile, write_search_subfile
 
 
 class WorkflowManager:
@@ -331,7 +333,7 @@ class WorkflowManager:
             f"--config_file {config_file} --target_file {target_file} --taskname {taskname} "
             f"--freq {freq} --stage {stage} --freq_deriv_order {freq_deriv_order} "
             f"--df_grid {df_grid_str} --inj_freq_deriv_order {inj_freq_deriv_order} "
-            f"--sft_files {sft_files_local} --metric_file {metric_file_local} "
+            f"--sft_files '{sft_files_local}' --metric_file {metric_file_local} "
             f"--n_inj {n_inj} --num_toplist {num_toplist} --h0_est {h0_est} "
             f"--mean2f_th {mean2f_th} --non_sat_bands {bands_str} "
             f"--sky_radius {sky_radius} --n_cpus {request_cpu}"
@@ -365,7 +367,7 @@ class WorkflowManager:
     ):
         """Generates VARS for OSG file transfers for Upper Limits."""
 
-        input_files_list = [str(exe), str(image), str(config_file), str(target_file)]
+        input_files_list = [str(exe), str(config_file), str(target_file)]
         input_files_list.extend([str(s) for s in sft_files])
         input_files_list.append(str(metric_file))
 
@@ -459,7 +461,7 @@ class WorkflowManager:
 
         write_search_subfile(
             filename=str(sub_file_path),
-            executable_path="/opt/conda/bin/python3",
+            executable_path="/opt/paws/.venv/bin/python",
             transfer_executable=False,
             output_path=str(cr_files[0]),
             error_path=str(cr_files[1]),
@@ -472,7 +474,7 @@ class WorkflowManager:
             request_cpu=request_cpu,
             use_osg=True,
             use_osdf=True,
-            image=Path(image).name,
+            image=image,
         )
 
         arg_list = self._ul_transfer_args(

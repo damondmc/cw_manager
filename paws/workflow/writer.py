@@ -25,7 +25,10 @@ def write_search_subfile(
     Path(Path(filename).resolve().parent).mkdir(parents=True, exist_ok=True)
 
     with open(filename, "w") as subfile:
-        subfile.write("universe = vanilla\n")
+        if image is None:
+            subfile.write("universe = vanilla\n")
+        else:
+            subfile.write("universe = cointainer\n")
         subfile.write("notification = Never\n")
         subfile.write("request_memory = {0}\n".format(request_memory))
         subfile.write("request_disk = {0}\n".format(request_disk))
@@ -36,14 +39,14 @@ def write_search_subfile(
         subfile.write("accounting_group_user = {0}\n\n".format(user))
 
         if image is not None:
-            subfile.write('MY.SingularityImage = "{}"\n\n'.format(image))
+            subfile.write('container_image = "{}"\n\n'.format(image))
 
         subfile.write("output = {0}\n".format(output_path))
         subfile.write("error = {0}\n".format(error_path))
         subfile.write("log = {0}\n".format(log_path))
         subfile.write("max_retries = {0}\n".format(2))
-        subfile.write("periodic_release = (HoldReasonSubCode == 13)\n")
-        subfile.write("executable = {0}\n".format(executable_path))
+        # subfile.write("periodic_release = (HoldReasonSubCode == 13)\n")
+        # subfile.write("executable = {0}\n".format(executable_path))
 
         # Unified arguments line for both OSG and Local
         subfile.write("arguments = {0}\n\n".format(arg_list_string))
@@ -60,7 +63,7 @@ def write_search_subfile(
 
             # Pluralized to support batching output
             subfile.write("transfer_output_files = $(OUTPUT_FILES)\n")
-            subfile.write('transfer_output_remaps = "$(REMAP_OUTPUT_FILES)"\n\n')
+            subfile.write("transfer_output_remaps = $(REMAP_OUTPUT_FILES)\n\n")
 
             if use_osdf:
                 subfile.write("use_oauth_services = scitokens\n")

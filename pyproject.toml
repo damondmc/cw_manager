@@ -27,3 +27,4 @@ packages = ["paws"]
 exclude = ["example/"]
 
 [tool.ruff.lint]
+select = ["I"]

@@ -1,18 +1,19 @@
 #!/opt/paws/.venv/bin/python
-import numpy as np
 import argparse
-import time
-import yaml
-from pathlib import Path
-from astropy.io import fits
 import logging
 import sys
+import time
+from pathlib import Path
 
-from paws.definitions import phase_param_name
-from paws.params.models import PowerLawModel
-from paws.params.injections import InjectionParamGenerator
-from paws.pipeline import determine_efficiency
+import numpy as np
+import yaml
+from astropy.io import fits
+
 from paws.analysis.sigmoid import SigmoidFitter
+from paws.definitions import phase_param_name
+from paws.params.injections import InjectionParamGenerator
+from paws.params.models import PowerLawModel
+from paws.pipeline import determine_efficiency
 
 # Configure Logging
 logging.basicConfig(
@@ -141,19 +142,7 @@ def main():
     with open(args.target_file, "r") as f:
         target = yaml.safe_load(f)
 
-    # paths = PathManager(config, target)
-    # sft_files = []
-    # files = paths.sft_ensemble(freq, use_osdf=True)
-    # sft_files.extend(files) # Use extend, not append, to flatten the list
-    # sft_files = ';'.join(sft_files).replace('osdf:///igwn', '/osdf/igwn')
-    # print(sft_files)
-
-    # outlier_taskname = f'GalacticCenter_search-0_TCoh5_O2_{freq}Hz'
-    # data_file = paths.outlier_file(freq, outlier_taskname, 'search-0', cluster=True)
-    # non_sat_bands = fits.getdata(data_file, extname='non_sat_band')['non_sat_band']
-
     weave_exe = config["executables"]["weave"]
-    # metric_file = '/osdf/igwn/cit/staging/hoitim.cheung/metricSetup/Start1368970000_TCoh432000_N107_Spin2.fts'
 
     if args.work_in_local_dir:
         metric_file = Path(metric_file).name
@@ -206,6 +195,7 @@ def main():
 
     # 4. Iterative Injection Loop
     h0_arr, eff_arr = [], []  # h0 and efficiency arrays
+    iter_count = 0
 
     factors = [0.5, 0.7, 1.0, 1.5]  # Initial spread around estimate
 
@@ -219,7 +209,7 @@ def main():
 
         loop_t0 = time.time()
         eff, outlier_file_path = determine_efficiency(
-            taskname=taskname,
+            taskname=f"{taskname}_{iter_count}",
             stage=stage,
             config=config,
             target=target,
@@ -246,6 +236,7 @@ def main():
         )
         h0_arr.append(current_h0)
         eff_arr.append(eff)
+        iter_count += 1
 
     # 5. Sigmoid Fitting & Refinement
     fitter = SigmoidFitter(target, n_inj=n_inj, n_amp=1)
@@ -276,7 +267,7 @@ def main():
             scaled_injections = scale_injection(injection_data[str(freq)].data, new_h0)
 
             eff, outlier_file_path = determine_efficiency(
-                taskname=taskname,
+                taskname=f"{taskname}_{iter_count}",
                 stage=stage,
                 config=config,
                 target=target,
@@ -300,13 +291,14 @@ def main():
 
             h0_arr.append(new_h0)
             eff_arr.append(eff)
+            iter_count += 1
 
     # 6. Final Confirmation Run
     logging.info(f"Performing final confirmation run at h95 = {h95:.3e}")
     scaled_injections = scale_injection(injection_data[str(freq)].data, h95)
 
     eff, outlier_file_path = determine_efficiency(
-        taskname=taskname,
+        taskname=f"{taskname}_{iter_count}",
         stage=stage,
         config=config,
         target=target,

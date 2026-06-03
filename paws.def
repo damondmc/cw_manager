@@ -6,6 +6,7 @@ From: ubuntu:22.04
     export VIRTUAL_ENV="/opt/paws/.venv"
 
 %post
+    set -e
     # 1. Added ca-certificates so curl and git can use SSL/HTTPS safely
     apt-get update -y
     apt-get install -y --no-install-recommends build-essential curl git python3 python3-dev ca-certificates

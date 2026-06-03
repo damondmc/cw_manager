@@ -1,10 +1,11 @@
 import numpy as np
 import yaml
-from paws.workflow.manager import WorkflowManager
-from paws.analysis.outlier import ResultAnalysisManager
-from paws.filepaths import PathManager
 from astropy.io import fits
 from tqdm import tqdm
+
+from paws.analysis.outlier import ResultAnalysisManager
+from paws.filepaths import PathManager
+from paws.workflow.manager import WorkflowManager
 
 # 1. Load Configs
 with open("/home/hoitim.cheung/galacticCenter/config/config.yaml", "r") as f:
@@ -30,7 +31,7 @@ prev_freq_deriv_order = 3
 stage = "injections-3"
 tcoh = 40
 freq_deriv_order = 3
-# n_jobs = 200
+n_sky = 1
 
 for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax - fmin)):
     if freq in sat_band_list:
@@ -55,6 +56,7 @@ for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax - fmin)):
         num_toplist=1,
         stage=stage,
         freq_deriv_order=freq_deriv_order,
+        n_sky=n_sky,
         cluster=cluster,
         work_in_local_dir=False,
         separate_saturated=False,

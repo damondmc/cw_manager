@@ -1,9 +1,10 @@
 import yaml
-from paws.workflow.manager import WorkflowManager
-from paws.analysis.outlier import ResultAnalysisManager
-from paws.filepaths import PathManager
 from astropy.io import fits
 from tqdm import tqdm
+
+from paws.analysis.outlier import ResultAnalysisManager
+from paws.filepaths import PathManager
+from paws.workflow.manager import WorkflowManager
 
 # 1. Load Configs
 with open("/home/hoitim.cheung/galacticCenter/config/config.yaml", "r") as f:
@@ -36,16 +37,16 @@ for freq in tqdm(range(fmin, fmax), total=(fmax - fmin)):
     data_file = paths.outlier_file(freq, prev_taskname, prev_stage, cluster=cluster)
 
     mean2f_th = fits.getval(data_file, "mean2F_th", 0)
-    n_jobs = n_inj * n_sky
 
     result_file = result_manager.make_outlier(
         taskname,
         freq,
         mean2f_th,
-        n_jobs,
+        n_inj,
         num_toplist=1,
         stage=stage,
         freq_deriv_order=freq_deriv_order,
+        n_sky=n_sky,
         cluster=cluster,
         work_in_local_dir=False,
         separate_saturated=True,

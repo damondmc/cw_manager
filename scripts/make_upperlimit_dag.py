@@ -1,12 +1,12 @@
 #!/opt/paws/.venv/bin/python
 import numpy as np
 import yaml
-from paws.workflow.manager import WorkflowManager
-from paws.filepaths import PathManager
 from astropy.io import fits
-from paws.definitions import phase_param_name
-
 from tqdm import tqdm
+
+from paws.definitions import phase_param_name
+from paws.filepaths import PathManager
+from paws.workflow.manager import WorkflowManager
 
 # 1. Load Configs
 config_file = "/home/hoitim.cheung/galacticCenter/config/config.yaml"
@@ -31,8 +31,8 @@ prev_stage = "search-0"
 prev_tcoh = 5
 prev_freq_deriv_order = 2
 sky_radius = 1.25e-4
-spacing_alpha = sky_radius / 1.5
-spacing_delta = sky_radius / 1.5
+spacing_alpha = 1.25e-4
+spacing_delta = 1.25e-4
 n_inj = 200
 num_toplist = 1
 
@@ -41,7 +41,7 @@ metric_file = "osdf:///igwn/cit/staging/hoitim.cheung/metricSetup/Start136897000
 
 exe = "osdf:///igwn/cit/staging/hoitim.cheung/scripts/upperlimit.py"
 
-image = "osdf:///igwn/cit/staging/hoitim.cheung/images/paws_gc.sif"
+image = "osdf:///igwn/cit/staging/hoitim.cheung/images/paws.sif"
 
 h0_file = "/home/hoitim.cheung/gc/results/upperLimit-rt-200inj/NGC6544/NGC6544_upperLimit-rt-200inj_20-475Hz_clustered.txt"
 freq, h0_arr, _ = np.loadtxt(h0_file).T

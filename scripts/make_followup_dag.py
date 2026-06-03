@@ -2,11 +2,11 @@ import yaml
 from astropy.io import fits
 from tqdm import tqdm
 
-from paws.filepaths import PathManager
-from paws.workflow.manager import WorkflowManager
 from paws.definitions import phase_param_name
-from paws.params.models import PowerLawModel
+from paws.filepaths import PathManager
 from paws.params.followup import FollowUpParamGenerator
+from paws.params.models import PowerLawModel
+from paws.workflow.manager import WorkflowManager
 
 # 1. Load Configs
 with open("/home/hoitim.cheung/galacticCenter/config/config.yaml", "r") as f:
@@ -43,6 +43,9 @@ freq_deriv_order = 2
 inj_freq_deriv_order = 4
 n_seg = 54
 tasks_per_job = 1000
+sky_radius = 0
+spacing_alpha = None
+spacing_delta = None
 ################################################
 
 extra_stats = "coh2F_det,mean2F,coh2F_det,mean2F_det"
@@ -115,6 +118,9 @@ with open(dag_list_path, "w") as f_daglist:
             new_freq_deriv_order=freq_deriv_order,
             spacing=df_grid,
             n_spacing=config["followup_n_spacing"],
+            sky_radius=sky_radius,
+            spacing_alpha=spacing_alpha,
+            spacing_delta=spacing_delta,
         )
 
         taskname = f"{target['name']}_{stage}_TCoh{tcoh}_O{freq_deriv_order}_{freq}Hz"

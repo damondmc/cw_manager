@@ -1,12 +1,13 @@
 import subprocess
-from pathlib import Path
 from multiprocessing import Pool
+from pathlib import Path
+
 from astropy.io import fits
 
-from paws.io import make_dir
+from paws.analysis.outlier import ResultAnalysisManager
 from paws.definitions import phase_param_name
 from paws.filepaths import PathManager
-from paws.analysis.outlier import ResultAnalysisManager
+from paws.io import make_dir
 
 
 def delete_files(result_file_list):
@@ -123,7 +124,11 @@ def injection_job(
     cmd_parts.append(f'--injections="{{{inj_str}}}"')
 
     command = " ".join(cmd_parts)
-    subprocess.run(command, shell=True, capture_output=True, text=True)
+    proc = subprocess.run(command, shell=True, capture_output=True, text=True)
+    if proc.stdout:
+        print(f"[injection_job stdout] {result_file}:\n{proc.stdout}")
+    if proc.stderr:
+        print(f"[injection_job stderr] {result_file}:\n{proc.stderr}")
     return result_file
 
 

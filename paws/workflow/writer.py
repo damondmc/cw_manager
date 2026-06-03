@@ -28,7 +28,7 @@ def write_search_subfile(
         if image is None:
             subfile.write("universe = vanilla\n")
         else:
-            subfile.write("universe = cointainer\n")
+            subfile.write("universe = container\n")
         subfile.write("notification = Never\n")
         subfile.write("request_memory = {0}\n".format(request_memory))
         subfile.write("request_disk = {0}\n".format(request_disk))
@@ -44,9 +44,9 @@ def write_search_subfile(
         subfile.write("output = {0}\n".format(output_path))
         subfile.write("error = {0}\n".format(error_path))
         subfile.write("log = {0}\n".format(log_path))
-        subfile.write("max_retries = {0}\n".format(2))
+        # subfile.write("max_retries = {0}\n".format(2))
         # subfile.write("periodic_release = (HoldReasonSubCode == 13)\n")
-        # subfile.write("executable = {0}\n".format(executable_path))
+        subfile.write("executable = {0}\n".format(executable_path))
 
         # Unified arguments line for both OSG and Local
         subfile.write("arguments = {0}\n\n".format(arg_list_string))

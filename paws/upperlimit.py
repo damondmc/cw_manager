@@ -298,7 +298,7 @@ def main():
     scaled_injections = scale_injection(injection_data[str(freq)].data, h95)
 
     eff, outlier_file_path = determine_efficiency(
-        taskname=f"{taskname}_{iter_count}",
+        taskname=taskname,
         stage=stage,
         config=config,
         target=target,

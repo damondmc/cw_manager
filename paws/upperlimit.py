@@ -193,6 +193,10 @@ def main():
     # n_sky: number of sky-point jobs per injection (1 if no tiling)
     n_sky = len(search_data[str(freq)].data) // n_inj
 
+    print(
+        f"Generated injection and search parameter tables for {n_inj} injections and {n_sky} sky points per injection."
+    )
+
     # 4. Iterative Injection Loop
     h0_arr, eff_arr = [], []  # h0 and efficiency arrays
     iter_count = 0

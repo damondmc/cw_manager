@@ -205,7 +205,7 @@ class InjectionParamGenerator:
             inj_idx = np.repeat(np.arange(n_inj), n_sky)
             ip_hdu = fits.BinTableHDU(Table(ip_hdu.data)[inj_idx])
 
-        injParamDict = {str(freq): ip_hdu}
         searchParamDict = {str(freq): sp_hdu}
+        injParamDict = {str(freq): ip_hdu}
 
         return searchParamDict, injParamDict

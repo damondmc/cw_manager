@@ -124,11 +124,14 @@ def injection_job(
     cmd_parts.append(f'--injections="{{{inj_str}}}"')
 
     command = " ".join(cmd_parts)
-    proc = subprocess.run(command, shell=True, capture_output=True, text=True)
-    if proc.stdout:
-        print(f"[injection_job stdout] {result_file}:\n{proc.stdout}")
-    if proc.stderr:
-        print(f"[injection_job stderr] {result_file}:\n{proc.stderr}")
+    # proc = subprocess.run(command, shell=True, capture_output=True, text=True)
+    # if proc.stdout:
+    #     print(f"[injection_job stdout] {result_file}:\n{proc.stdout}")
+    # if proc.stderr:
+    #     print(f"[injection_job stderr] {result_file}:\n{proc.stderr}")
+
+    subprocess.run(command, shell=True, capture_output=True, text=True)
+
     return result_file
 
 

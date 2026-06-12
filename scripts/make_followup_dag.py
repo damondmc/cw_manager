@@ -1,5 +1,7 @@
+import numpy as np
 import yaml
 from astropy.io import fits
+from astropy.table import Table
 from tqdm import tqdm
 
 from paws.definitions import phase_param_name
@@ -46,6 +48,7 @@ tasks_per_job = 1000
 sky_radius = 0
 spacing_alpha = None
 spacing_delta = None
+sky_grid_file = "tests/results_sky/gc_sky_grid.txt"  # actual Weave sky grid offsets (d_alpha, d_delta)
 ################################################
 
 extra_stats = "coh2F_det,mean2F,coh2F_det,mean2F_det"
@@ -122,6 +125,21 @@ with open(dag_list_path, "w") as f_daglist:
             spacing_alpha=spacing_alpha,
             spacing_delta=spacing_delta,
         )
+
+        # Tile each outlier across the actual Weave sky grid: (d_alpha, d_delta)
+        # offsets centered on the grid's mean, read from sky_grid_file. One of
+        # these points is already nearly coincident with the outlier's own
+        # (0,0) position, so it is not added separately.
+        if len(search_data.data) > 0:
+            d_alpha, d_delta = np.loadtxt(sky_grid_file, unpack=True)
+            n_sky = len(d_alpha)
+            n_out = len(search_data.data)
+            idx = np.repeat(np.arange(n_out), n_sky)
+            sky_idx = np.tile(np.arange(n_sky), n_out)
+            table = Table(search_data.data)[idx]
+            table["alpha"] = table["alpha"] + d_alpha[sky_idx]
+            table["delta"] = table["delta"] + d_delta[sky_idx]
+            search_data = fits.BinTableHDU(data=table)
 
         taskname = f"{target['name']}_{stage}_TCoh{tcoh}_O{freq_deriv_order}_{freq}Hz"
 

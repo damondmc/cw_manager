@@ -41,7 +41,7 @@ def physical_to_rssky(alpha, delta, R_asky):
     R_asky = np.asarray(R_asky).reshape(3, 3)
     n = sky_unit_vector(alpha, delta)
     na = R_asky @ n  # aligned sky coordinates
-    r = np.linalg.norm(na)
+    r = np.linalg.norm(na, axis=0)
     rss_A = np.sign(na[2]) * (na[0] / r + 1.0)
     rss_B = na[1] / r
     return rss_A, rss_B
@@ -110,8 +110,11 @@ def read_sky_grid_info(weave_result_file):
     Read sky grid info from a raw Weave result FITS primary header.
 
     Keys used:
-        NSEMITMPL SSKYA  — template count along rss_A (eigenvector direction A)
-        NSEMITMPL SSKYB  — template count along rss_B (eigenvector direction B)
+        NSEMITMPL SSKYA  — raw template count along Weave's sky_A axis
+                           (= this module's rss_B direction)
+        NSEMITMPL SSKYB  — *cumulative* template count (count_A * count_B);
+                           dividing by NSEMITMPL SSKYA gives the raw count
+                           along Weave's sky_B axis (= this module's rss_A direction)
         PROGARG ALPHA    — physical RA range "min,max" [rad]
         PROGARG DELTA    — physical Dec range "min,max" [rad]
 
@@ -124,8 +127,8 @@ def read_sky_grid_info(weave_result_file):
     """
     with fits.open(weave_result_file) as hdul:
         h = hdul[0].header
-    n_rssA = int(h["NSEMITMPL SSKYA"])
-    n_rssB = int(h["NSEMITMPL SSKYB"])
+    n_rssB = int(h["NSEMITMPL SSKYA"])
+    n_rssA = int(h["NSEMITMPL SSKYB"]) // n_rssB
     alpha_min, alpha_max = (float(x) for x in h["PROGARG ALPHA"].split(","))
     delta_min, delta_max = (float(x) for x in h["PROGARG DELTA"].split(","))
     return n_rssA, n_rssB, (alpha_min, alpha_max), (delta_min, delta_max)
@@ -133,10 +136,22 @@ def read_sky_grid_info(weave_result_file):
 
 def generate_sky_grid(alpha_range, delta_range, n_rssA, n_rssB, R_asky):
     """
-    Generate physical (alpha, delta) grid points placed along RSSKY eigenvector directions.
+    Generate physical (alpha, delta) grid points on the hexagonal (triangular /
+    A_2*-type) covering lattice that lalpulsar_Weave's LatticeTiling places in
+    RSSKY space.
 
-    Templates are spaced along rss_A and rss_B (the eigenvectors of the sky metric).
-    The RSSKY extents are estimated by projecting the physical RA/Dec range edges.
+    Within each row (fixed rss_B) templates are evenly spaced along rss_A;
+    consecutive rows are laterally shifted by half the within-row spacing.
+    This row-to-row shear is exact for a hexagonal lattice whenever the
+    sky-sky metric block is diagonal in (rss_A, rss_B) -- true here, since
+    semi_rssky_metric has M_AB = 0 -- and is what makes the real grid look
+    "sheared/rotated" relative to a plain axis-aligned rectangle (verified
+    against an actual Weave search grid: mean nearest-neighbour residual
+    drops from ~1.4e-5 rad for a plain meshgrid to ~5e-6 rad with the shear).
+
+    The RSSKY extents (hence row/column spacings) are estimated by projecting
+    the physical RA/Dec range edges, same as before; the shear is centered on
+    the middle row so the grid stays anchored at the range center.
 
     Parameters
     ----------
@@ -156,13 +171,15 @@ def generate_sky_grid(alpha_range, delta_range, n_rssA, n_rssB, R_asky):
     delta_c = 0.5 * (delta_range[0] + delta_range[1])
     rss_A_0, rss_B_0 = physical_to_rssky(alpha_c, delta_c, R_asky)
 
-    # Estimate rss_A extent from RA edges at fixed Dec center
+    # Estimate rss_A extent (and within-row spacing) from RA edges at fixed Dec center
     if n_rssA > 1:
         rss_A_lo = physical_to_rssky(alpha_range[0], delta_c, R_asky)[0]
         rss_A_hi = physical_to_rssky(alpha_range[1], delta_c, R_asky)[0]
         rss_A_vals = np.linspace(rss_A_lo, rss_A_hi, n_rssA)
+        spacing_A = (rss_A_hi - rss_A_lo) / (n_rssA - 1)
     else:
         rss_A_vals = np.array([rss_A_0])
+        spacing_A = 0.0
 
     # Estimate rss_B extent from Dec edges at fixed RA center
     if n_rssB > 1:
@@ -172,9 +189,76 @@ def generate_sky_grid(alpha_range, delta_range, n_rssA, n_rssB, R_asky):
     else:
         rss_B_vals = np.array([rss_B_0])
 
-    rss_A_grid, rss_B_grid = np.meshgrid(rss_A_vals, rss_B_vals)
+    # Hexagonal-lattice row shear: each row is offset from its neighbour by
+    # half the within-row spacing (sign fixed empirically from a real Weave
+    # grid; the 1/2 magnitude is exact for any diagonal sky-sky metric block).
+    # Centering on the middle row keeps the grid anchored at the range center.
+    row_offset = np.arange(n_rssB) - 0.5 * (n_rssB - 1)
+    rss_A_grid = rss_A_vals[np.newaxis, :] - 0.5 * spacing_A * row_offset[:, np.newaxis]
+    rss_B_grid = np.broadcast_to(rss_B_vals[:, np.newaxis], rss_A_grid.shape)
+
     alphas, deltas = rssky_to_physical(rss_A_grid.ravel(), rss_B_grid.ravel(), R_asky)
     return alphas, deltas
+
+
+def generate_sky_grid_local(alpha_range, delta_range, n_rows, n_total):
+    """
+    Generate a physical (alpha, delta) sky template grid matching the row
+    structure lalpulsar_Weave actually uses for *directed* searches: rows of
+    (nearly) constant declination, evenly spaced across delta_range, each
+    holding ~n_total / n_rows points evenly spaced across alpha_range, with
+    consecutive rows laterally offset by half the within-row spacing
+    (hexagonal shear).
+
+    Unlike generate_sky_grid, this needs no align_sky / RSSKY machinery: for
+    a directed search the requested sky region is small enough that physical
+    (RA, Dec) IS effectively the lattice's natural frame -- confirmed against
+    real Weave search grids at six widely separated sky locations, where the
+    dominant nearest-neighbour direction matched the "constant declination"
+    direction to within ~1-4 deg. (Assuming rows of constant RSSKY rss_B
+    instead, as generate_sky_grid does, is only right by coincidence wherever
+    the all-sky setup file's align_sky happens to line up physical RA/Dec
+    with its rss_A/rss_B axes -- elsewhere it's off by tens of degrees.)
+
+    n_rows and n_total should come straight from the *cumulative* counts
+    NSEMITMPL SSKYA / SSKYB, NOT the average row length n_rssA = SSKYB //
+    SSKYA that read_sky_grid_info derives: real row lengths vary, since the
+    requested rectangle maps to a slightly tilted region in the lattice
+    frame that tapers near its corners. Assuming a uniform n_total // n_rows
+    per row is therefore still an approximation -- expect any residual
+    mismatch to be concentrated at the grid's edges.
+
+    Parameters
+    ----------
+    alpha_range : (float, float)   RA range  (min, max) [rad]
+    delta_range : (float, float)   Dec range (min, max) [rad]
+    n_rows : int    Number of declination rows (= NSEMITMPL SSKYA)
+    n_total : int   Total number of sky templates (= NSEMITMPL SSKYB)
+
+    Returns
+    -------
+    alphas, deltas : ndarray, shape (n_rows * round(n_total / n_rows),)
+        Physical sky coordinates of all grid points.
+    """
+    delta_vals = (
+        np.linspace(delta_range[0], delta_range[1], n_rows)
+        if n_rows > 1
+        else np.array([0.5 * (delta_range[0] + delta_range[1])])
+    )
+
+    n_per_row = max(1, round(n_total / n_rows))
+    if n_per_row > 1:
+        alpha_vals = np.linspace(alpha_range[0], alpha_range[1], n_per_row)
+        spacing = (alpha_range[1] - alpha_range[0]) / (n_per_row - 1)
+    else:
+        alpha_vals = np.array([0.5 * (alpha_range[0] + alpha_range[1])])
+        spacing = 0.0
+
+    row_offset = np.arange(n_rows) - 0.5 * (n_rows - 1)
+    alpha_grid = alpha_vals[np.newaxis, :] - 0.5 * spacing * row_offset[:, np.newaxis]
+    delta_grid = np.broadcast_to(delta_vals[:, np.newaxis], alpha_grid.shape)
+
+    return alpha_grid.ravel(), delta_grid.ravel()
 
 
 def rssky_jacobian(rss_A_0, rss_B_0, R_asky):

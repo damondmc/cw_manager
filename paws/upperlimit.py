@@ -143,6 +143,7 @@ def main():
         target = yaml.safe_load(f)
 
     weave_exe = config["executables"]["weave"]
+    weave_exe = "/opt/paws/.venv/bin/lalpulsar_Weave"  # Override for testing
 
     if args.work_in_local_dir:
         metric_file = Path(metric_file).name

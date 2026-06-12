@@ -136,10 +136,14 @@ with open(dag_list_path, "w") as f_daglist:
             n_out = len(search_data.data)
             idx = np.repeat(np.arange(n_out), n_sky)
             sky_idx = np.tile(np.arange(n_sky), n_out)
+
             table = Table(search_data.data)[idx]
             table["alpha"] = table["alpha"] + d_alpha[sky_idx]
             table["delta"] = table["delta"] + d_delta[sky_idx]
             search_data = fits.BinTableHDU(data=table)
+
+            if injection_data is not None:
+                injection_data = np.repeat(injection_data, n_sky)
 
         taskname = f"{target['name']}_{stage}_TCoh{tcoh}_O{freq_deriv_order}_{freq}Hz"
 

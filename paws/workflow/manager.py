@@ -264,14 +264,16 @@ class WorkflowManager:
             image=image,
         )
 
-        # Combine jobs into chunks
-        job_list = list(zip(params, inj_params) if is_injection else params)
-        chunks = [
-            job_list[i : i + tasks_per_job]
-            for i in range(0, len(job_list), tasks_per_job)
-        ]
+        n_jobs = len(params)
+        n_chunks = (n_jobs + tasks_per_job - 1) // tasks_per_job
 
-        for node_index, chunk in tqdm(enumerate(chunks, 1), total=len(chunks)):
+        for node_index in tqdm(range(1, n_chunks + 1), total=n_chunks):
+            start = (node_index - 1) * tasks_per_job
+            end = min(start + tasks_per_job, n_jobs)
+            if is_injection:
+                chunk = list(zip(params[start:end], inj_params[start:end]))
+            else:
+                chunk = params[start:end]
             arg_list = self._search_batch_args(
                 freq,
                 stage,

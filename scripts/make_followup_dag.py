@@ -27,7 +27,7 @@ fmax = 400
 use_osg = True
 use_osdf = True
 cluster = True
-is_injection = False  # True to carry injections from prev stage into DAG
+is_injection = True  # True to carry injections from prev stage into DAG
 
 ################################################
 prev_stage = "search-0"

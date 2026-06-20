@@ -2,6 +2,7 @@ import sys
 import time
 from pathlib import Path
 
+import numpy as np
 from tqdm import tqdm
 
 from paws.definitions import ext_param_name, phase_param_name
@@ -201,6 +202,7 @@ class WorkflowManager:
         inj_params=None,
         inj_freq_deriv_order=None,
         tasks_per_job=10,
+        sky_offsets=None,
     ):
         """
         Creates the DAG and SUB files for the Search/Follow-up stage using grouped batching.
@@ -264,16 +266,48 @@ class WorkflowManager:
             image=image,
         )
 
-        n_jobs = len(params)
+        if sky_offsets is not None:
+            d_alpha_sky, d_delta_sky = sky_offsets
+            n_sky = len(d_alpha_sky)
+        else:
+            n_sky = 1
+
+        n_out = len(params)
+        n_jobs = n_out * n_sky
         n_chunks = (n_jobs + tasks_per_job - 1) // tasks_per_job
 
         for node_index in tqdm(range(1, n_chunks + 1), total=n_chunks):
-            start = (node_index - 1) * tasks_per_job
-            end = min(start + tasks_per_job, n_jobs)
-            if is_injection:
-                chunk = list(zip(params[start:end], inj_params[start:end]))
+            job_start = (node_index - 1) * tasks_per_job
+            job_end = min(job_start + tasks_per_job, n_jobs)
+
+            if sky_offsets is not None:
+                out_start = job_start // n_sky
+                out_end = min((job_end - 1) // n_sky + 1, n_out)
+                n_out_chunk = out_end - out_start
+                local_start = job_start - out_start * n_sky
+                local_end = local_start + (job_end - job_start)
+
+                row_idx = np.repeat(np.arange(n_out_chunk), n_sky)
+                sky_idx = np.tile(np.arange(n_sky), n_out_chunk)
+                tiled = params[out_start:out_end][row_idx]
+                tiled["alpha"] = tiled["alpha"] + d_alpha_sky[sky_idx]
+                tiled["delta"] = tiled["delta"] + d_delta_sky[sky_idx]
+                chunk_params = tiled[local_start:local_end]
+
+                if is_injection:
+                    chunk_inj = np.repeat(inj_params[out_start:out_end], n_sky)[
+                        local_start:local_end
+                    ]
+                    chunk = list(zip(chunk_params, chunk_inj))
+                else:
+                    chunk = chunk_params
             else:
-                chunk = params[start:end]
+                chunk_params = params[job_start:job_end]
+                if is_injection:
+                    chunk = list(zip(chunk_params, inj_params[job_start:job_end]))
+                else:
+                    chunk = chunk_params
+
             arg_list = self._search_batch_args(
                 freq,
                 stage,

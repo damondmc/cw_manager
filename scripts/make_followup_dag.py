@@ -1,7 +1,6 @@
 import numpy as np
 import yaml
 from astropy.io import fits
-from astropy.table import Table
 from tqdm import tqdm
 
 from paws.definitions import phase_param_name
@@ -130,20 +129,10 @@ with open(dag_list_path, "w") as f_daglist:
         # offsets centered on the grid's mean, read from sky_grid_file. One of
         # these points is already nearly coincident with the outlier's own
         # (0,0) position, so it is not added separately.
-        if len(search_data.data) > 0:
+        sky_offsets = None
+        if len(search_data.data) > 0 and sky_grid_file:
             d_alpha, d_delta = np.loadtxt(sky_grid_file, unpack=True)
-            n_sky = len(d_alpha)
-            n_out = len(search_data.data)
-            idx = np.repeat(np.arange(n_out), n_sky)
-            sky_idx = np.tile(np.arange(n_sky), n_out)
-
-            table = Table(search_data.data)[idx]
-            table["alpha"] = table["alpha"] + d_alpha[sky_idx]
-            table["delta"] = table["delta"] + d_delta[sky_idx]
-            search_data = fits.BinTableHDU(data=table)
-
-            if injection_data is not None:
-                injection_data = np.repeat(injection_data, n_sky)
+            sky_offsets = (d_alpha, d_delta)
 
         taskname = f"{target['name']}_{stage}_TCoh{tcoh}_O{freq_deriv_order}_{freq}Hz"
 
@@ -165,6 +154,7 @@ with open(dag_list_path, "w") as f_daglist:
             inj_params=injection_data,
             inj_freq_deriv_order=inj_freq_deriv_order if is_injection else None,
             tasks_per_job=tasks_per_job,
+            sky_offsets=sky_offsets,
         )
 
         f_daglist.write(f"{dag_file}\n")

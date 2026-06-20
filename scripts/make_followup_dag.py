@@ -52,7 +52,7 @@ sky_grid_file = "tests/results_sky/gc_sky_grid.txt"  # actual Weave sky grid off
 
 extra_stats = "coh2F_det,mean2F,coh2F_det,mean2F_det"
 weave_exe = config["executables"]["weave"]
-num_top_list = config["num_toplist"]
+num_top_list = config["num_top_list"]
 metric_file = f"osdf:///igwn/cit/staging/hoitim.cheung/metricSetup/o4ab_t{tcoh}_s{freq_deriv_order}.fts"
 
 _, freq_deriv_param_names = phase_param_name(prev_freq_deriv_order)
@@ -64,7 +64,7 @@ dag_list_path = f"{home_dir}dagFiles/{stage}_{target['name']}_dag{fmin}-{fmax}Hz
 with open(dag_list_path, "w") as f_daglist:
     for freq in tqdm(range(fmin, fmax), desc="Generating DAGs", total=fmax - fmin):
         sft_files = []
-        files = paths.sft_ensemble(freq, use_osdf=use_osdf)
+        files = paths.sft_ensemble(freq)
         sft_files.extend(files)
 
         data_taskname = f"{target['name']}_{prev_stage}_TCoh{prev_tcoh}_O{prev_freq_deriv_order}_{freq}Hz"

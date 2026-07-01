@@ -21,29 +21,29 @@ with open(f"{home_dir}config/gal.yaml", "r") as f:
 paths = PathManager(config, target)
 manager = WorkflowManager(config, target)
 
-fmin = 20
-fmax = 400
+fmin = 314
+fmax = 315
 use_osg = True
 use_osdf = True
 cluster = True
 is_injection = True  # True to carry injections from prev stage into DAG
 
 ################################################
-prev_stage = "search-0"
-prev_tcoh = 5
+prev_stage = "followup-1"
+prev_tcoh = 10
 prev_freq_deriv_order = 2
 ################################################
 
 ################################################
-stage = "followup-1"
-tcoh = 10
+stage = "followup-2"
+tcoh = 20
 freq_deriv_order = 2
 ################################################
 
 ################################################
 inj_freq_deriv_order = 4
-n_seg = 54
-tasks_per_job = 1000
+n_seg = 27
+tasks_per_job = 100
 sky_radius = 0
 spacing_alpha = None
 spacing_delta = None

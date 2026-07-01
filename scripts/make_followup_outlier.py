@@ -21,8 +21,13 @@ result_manager = ResultAnalysisManager(config, target)
 
 sat_band_list = [299, 302, 303, 306, 307]
 THREADS = 32
+<<<<<<< HEAD
 
 fmin, fmax = 20, 400
+=======
+fmin, fmax = 274, 314
+# fmin, fmax = 20, 400
+>>>>>>> 6283f80 (combine the sky grid  feature)
 f0_band = config["f0_band"]
 cluster = True
 
@@ -37,12 +42,23 @@ tcoh = 20
 freq_deriv_order = 2
 
 n_sky = 57
+<<<<<<< HEAD
+=======
+# n_sky = 1
+is_injection = False
+
+if is_injection:
+    num_toplist = 1
+else:
+    num_toplist = 10
+>>>>>>> 6283f80 (combine the sky grid  feature)
 
 if is_injection:
     num_toplist = 1
 else:
     num_toplist = 10
 
+<<<<<<< HEAD
 # For non-injection runs, threshold on mean2F scaled by the injection-derived
 # efficiency ratio between the previous and current follow-up stage instead of
 # keeping every candidate.
@@ -51,13 +67,15 @@ now_inj_stage = "injections-2"
 
 #################################################################
 
+=======
+>>>>>>> 6283f80 (combine the sky grid  feature)
 if not is_injection:
     threshold_filename = f"/home/hoitim.cheung/galacticCenter/config/{prev_inj_stage}_vs_{now_inj_stage}_threshold.txt"
     fs, fe, ratio_th, _ = np.loadtxt(threshold_filename).T
     band_step = fe[0] - fs[0]
 
 
-for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax - fmin)):
+for freq in tqdm(range(fmin, fmax), total=(fmax - fmin)):
     if freq in sat_band_list:
         print(f"Skipping saturated band {freq} Hz")
         continue
@@ -65,9 +83,13 @@ for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax - fmin)):
     prev_taskname = f"{target['name']}_{prev_stage}_TCoh{prev_tcoh}_O{prev_freq_deriv_order}_{freq}Hz"
 
     taskname = f"{target['name']}_{stage}_TCoh{tcoh}_O{freq_deriv_order}_{freq}Hz"
-
+    
     data_file = paths.outlier_file(freq, prev_taskname, prev_stage, cluster=cluster)
+    if is_injection:
+        mean2f_th = fits.getdata(data_file)["mean2F threshold"]
+        mean2f_th = np.zeros_like(mean2f_th)
 
+<<<<<<< HEAD
 
     if is_injection:
         mean2f_th = fits.getdata(data_file)["mean2F threshold"]
@@ -81,11 +103,19 @@ for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax - fmin)):
         print(f"Freq={freq}Hz: th={ratio_th[idx]}")
 
 
+=======
+    else:
+        if not data_file.is_file() or fits.getdata(data_file).size == 0:
+            print(f"No outlier for {freq}Hz, skip.")
+            continue 
+        else:
+            idx = int((freq - 20) // band_step)
+            mean2f_th = (fits.getdata(data_file)["mean2F"]-4) * ratio_th[idx] + 4
+            print(f"Freq={freq}Hz: th={ratio_th[idx]}\n")
+    
+    
+>>>>>>> 6283f80 (combine the sky grid  feature)
     n_jobs = mean2f_th.size
-
-
-    # print(f"Freq={freq}Hz: th={ratio_th[idx]}\n")
-
     result_file = result_manager.make_outlier(
         taskname,
         freq,

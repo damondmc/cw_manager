@@ -47,7 +47,7 @@ tasks_per_job = 1000
 sky_radius = 0
 spacing_alpha = None
 spacing_delta = None
-sky_grid_file = "tests/results_sky/gc_sky_grid.txt"  # actual Weave sky grid offsets (d_alpha, d_delta)
+sky_grid_file = "/home/hoitim.cheung/galacticCenter/config/gc_sky_grid.txt"  # actual Weave sky grid offsets (d_alpha, d_delta)
 ################################################
 
 extra_stats = "coh2F_det,mean2F,coh2F_det,mean2F_det"

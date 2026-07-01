@@ -532,3 +532,204 @@ class WorkflowManager:
             str(dag_file_path), taskname, str(sub_file_path), 1, arg_list
         )
         return dag_file_path
+
+    # =========================================================================
+    #  SECTION 3: OUTLIER COLLECTION STAGE
+    # =========================================================================
+
+    def _outlier_args(
+        self,
+        config_file,
+        target_file,
+        taskname,
+        freq,
+        stage,
+        freq_deriv_order,
+        prev_outlier_file_local,
+        num_toplist,
+        n_sky,
+        zero_threshold,
+        cluster,
+        separate_saturated,
+        is_injection,
+        max_workers,
+    ):
+        """Generates command line arguments for the python outlier-collection script."""
+        arg_list_string = (
+            f"--config_file {config_file} --target_file {target_file} --taskname {taskname} "
+            f"--freq {freq} --stage {stage} --freq_deriv_order {freq_deriv_order} "
+            f"--prev_outlier_file {prev_outlier_file_local} --num_toplist {num_toplist} "
+            f"--n_sky {n_sky} --max_workers {max_workers}"
+        )
+
+        if zero_threshold:
+            arg_list_string += " --zero_threshold"
+        if cluster:
+            arg_list_string += " --cluster"
+        if separate_saturated:
+            arg_list_string += " --separate_saturated"
+        if is_injection:
+            arg_list_string += " --is_injection"
+
+        return arg_list_string
+
+    def _outlier_transfer_args(
+        self,
+        config_file,
+        target_file,
+        taskname,
+        freq,
+        stage,
+        n_jobs,
+        n_sky,
+        prev_outlier_file,
+        exe,
+        cluster,
+    ):
+        """Generates VARS for OSG file transfers for the outlier-collection job."""
+
+        # This stage's raw Weave result files live on OSDF; pull them via the
+        # osdf:// scheme so they transfer over the OSDF plugin like SFTs do.
+        weave_files = [
+            self.paths.to_osdf_url(
+                self.paths.weave_output_file(freq, taskname, job_index, stage)
+            )
+            for job_index in range(1, n_jobs * n_sky + 1)
+        ]
+
+        input_files_list = [
+            str(exe),
+            str(config_file),
+            str(target_file),
+            str(prev_outlier_file),
+        ] + weave_files
+        input_files_str = ", ".join(input_files_list)
+
+        outlier_file_path = self.paths.outlier_file(
+            freq, taskname, stage, cluster=False
+        )
+        make_dir([outlier_file_path])
+
+        output_names = [Path(outlier_file_path).name]
+        remap_strings = [f"{Path(outlier_file_path).name}={outlier_file_path}"]
+
+        if cluster:
+            clustered_file_path = self.paths.outlier_file(
+                freq, taskname, stage, cluster=True
+            )
+            output_names.append(Path(clustered_file_path).name)
+            remap_strings.append(
+                f"{Path(clustered_file_path).name}={clustered_file_path}"
+            )
+
+        arg_list = (
+            f'OUTPUT_FILES="{", ".join(output_names)}" '
+            f'REMAP_OUTPUT_FILES="{";".join(remap_strings)}" '
+            f'TRANSFER_FILES="{input_files_str}" '
+        )
+        return arg_list
+
+    def make_outlier_dag(
+        self,
+        config_file,
+        target_file,
+        taskname,
+        freq,
+        stage,
+        freq_deriv_order,
+        n_jobs,
+        prev_outlier_file,
+        exe,
+        num_toplist=1000,
+        n_sky=1,
+        zero_threshold=False,
+        cluster=False,
+        separate_saturated=False,
+        is_injection=False,
+        max_workers=32,
+        request_memory="8GB",
+        request_disk="8GB",
+        request_cpu=1,
+        image=None,
+    ):
+        """
+        Creates the DAG and SUB files for collecting Weave outputs into an
+        outlier FITS file as an OSG Condor job. Transfers in every raw Weave
+        result file for this stage/frequency (via OSDF) plus the previous
+        stage's outlier file (used to derive mean2F thresholds).
+        """
+        print(f"Generating OUTLIER DAG for {taskname}...")
+
+        # Job-management paths (DAG/SUB/OUT/ERR/LOG) are keyed only on
+        # (freq, taskname, stage). Since this job reuses the same taskname/stage
+        # as the underlying Weave search job (to locate its result files), a
+        # distinct identifier is needed here so it doesn't overwrite the
+        # search job's own DAG/SUB/records.
+        job_taskname = f"{taskname}_outlier"
+
+        dag_file_path = self.paths.dag_file(freq, job_taskname, stage)
+        dag_file_path.parent.mkdir(parents=True, exist_ok=True)
+        dag_file_path.unlink(missing_ok=True)
+
+        cr_files = self.paths.condor_record_files(freq, job_taskname, stage)
+        make_dir(cr_files)
+
+        sub_file_path = self.paths.condor_sub_file(freq, job_taskname, stage)
+        sub_file_path.unlink(missing_ok=True)
+
+        prev_outlier_file_local = Path(prev_outlier_file).name
+
+        python_args = self._outlier_args(
+            config_file=Path(config_file).name,
+            target_file=Path(target_file).name,
+            taskname=taskname,
+            freq=freq,
+            stage=stage,
+            freq_deriv_order=freq_deriv_order,
+            prev_outlier_file_local=prev_outlier_file_local,
+            num_toplist=num_toplist,
+            n_sky=n_sky,
+            zero_threshold=zero_threshold,
+            cluster=cluster,
+            separate_saturated=separate_saturated,
+            is_injection=is_injection,
+            max_workers=max_workers,
+        )
+
+        full_arg_string = f"{Path(exe).name} {python_args}"
+
+        write_search_subfile(
+            filename=str(sub_file_path),
+            executable_path="/opt/paws/.venv/bin/python",
+            transfer_executable=False,
+            output_path=str(cr_files[0]),
+            error_path=str(cr_files[1]),
+            log_path=str(cr_files[2]),
+            arg_list_string=full_arg_string,
+            accounting_group=self.config["acc_group"],
+            user=self.config["user"],
+            request_memory=request_memory,
+            request_disk=request_disk,
+            request_cpu=request_cpu,
+            use_osg=True,
+            use_osdf=True,
+            image=image,
+        )
+
+        arg_list = self._outlier_transfer_args(
+            config_file,
+            target_file,
+            taskname,
+            freq,
+            stage,
+            n_jobs,
+            n_sky,
+            prev_outlier_file,
+            exe,
+            cluster,
+        )
+
+        write_search_dagfile(
+            str(dag_file_path), job_taskname, str(sub_file_path), 1, arg_list
+        )
+        return dag_file_path

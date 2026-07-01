@@ -6,6 +6,7 @@ from tqdm import tqdm
 from paws.analysis.outlier import ResultAnalysisManager
 from paws.filepaths import PathManager
 from paws.workflow.manager import WorkflowManager
+from scripts.make_followup_dag import e
 
 # 1. Load Configs
 with open("/home/hoitim.cheung/galacticCenter/config/config.yaml", "r") as f:
@@ -21,17 +22,28 @@ result_manager = ResultAnalysisManager(config, target)
 # freq 298 - 310 not yet ready, so start from 310
 sat_band_list = [299, 302, 303, 306, 307]
 THREADS = 32
-fmin, fmax = 186, 400
+fmin, fmax = 20, 400
 f0_band = config["f0_band"]
 cluster = True
 
-prev_stage = "injections-2"
-prev_tcoh = 20
-prev_freq_deriv_order = 3
-stage = "injections-3"
-tcoh = 40
-freq_deriv_order = 3
-n_sky = 1
+#################################################################
+is_injection = False
+prev_stage = "followup-1"
+prev_tcoh = 10
+prev_freq_deriv_order = 2
+
+stage = "followup-2"
+tcoh = 20
+freq_deriv_order = 2
+
+n_sky = 57
+
+if is_injection:
+    num_toplist = 1
+else:
+    num_toplist = 10
+
+#################################################################
 
 for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax - fmin)):
     if freq in sat_band_list:
@@ -53,13 +65,13 @@ for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax - fmin)):
         freq,
         mean2f_th,
         n_jobs,
-        num_toplist=1,
+        num_toplist=num_toplist,
         stage=stage,
         freq_deriv_order=freq_deriv_order,
         n_sky=n_sky,
         cluster=cluster,
         work_in_local_dir=False,
         separate_saturated=False,
-        is_injection=True,
+        is_injection=is_injection,
         max_workers=THREADS,
     )

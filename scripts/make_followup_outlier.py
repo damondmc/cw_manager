@@ -2,6 +2,7 @@ import numpy as np
 import yaml
 from astropy.io import fits
 from tqdm import tqdm
+from pathlib import Path
 
 from paws.analysis.outlier import ResultAnalysisManager
 from paws.filepaths import PathManager
@@ -18,9 +19,9 @@ paths = PathManager(config, target)
 manager = WorkflowManager(config, target)  # PathManager is initialized inside here too
 result_manager = ResultAnalysisManager(config, target)
 
-# freq 298 - 310 not yet ready, so start from 310
 sat_band_list = [299, 302, 303, 306, 307]
 THREADS = 32
+
 fmin, fmax = 20, 400
 f0_band = config["f0_band"]
 cluster = True
@@ -55,6 +56,7 @@ if not is_injection:
     fs, fe, ratio_th, _ = np.loadtxt(threshold_filename).T
     band_step = fe[0] - fs[0]
 
+
 for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax - fmin)):
     if freq in sat_band_list:
         print(f"Skipping saturated band {freq} Hz")
@@ -65,6 +67,7 @@ for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax - fmin)):
     taskname = f"{target['name']}_{stage}_TCoh{tcoh}_O{freq_deriv_order}_{freq}Hz"
 
     data_file = paths.outlier_file(freq, prev_taskname, prev_stage, cluster=cluster)
+
 
     if is_injection:
         mean2f_th = fits.getdata(data_file)["mean2F threshold"]
@@ -77,7 +80,11 @@ for i, freq in tqdm(enumerate(range(fmin, fmax)), total=(fmax - fmin)):
         mean2f_th = (fits.getdata(data_file)["mean2F"] - 4) * ratio_th[idx] + 4
         print(f"Freq={freq}Hz: th={ratio_th[idx]}")
 
+
     n_jobs = mean2f_th.size
+
+
+    # print(f"Freq={freq}Hz: th={ratio_th[idx]}\n")
 
     result_file = result_manager.make_outlier(
         taskname,

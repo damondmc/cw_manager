@@ -31,19 +31,19 @@ tcoh = 5
 freq_deriv_order = 2
 inj_freq_deriv_order = 4
 sky_radius = 1.25e-4
-spacing_alpha = sky_radius / 1.5
-spacing_delta = sky_radius / 1.5
+spacing_alpha = 2.5e-4
+spacing_delta = 2.5e-4
 n_seg = 107
 n_inj = 200
-tasks_per_job = 200
+tasks_per_job = 100
 
-ul_stage = "upperlimit-1pc"
+ul_stage = "upperlimit-1pc-1skypt"
 h0_file = f"{home_dir}postprocess/data/{target['name']}_{ul_stage}_TCoh{tcoh}_O{freq_deriv_order}_{fmin}-{fmax}Hz_clustered.txt"
 freq, h0_arr, _ = np.loadtxt(h0_file).T
 
 extra_stats = "coh2F_det,mean2F,coh2F_det,mean2F_det"
 weave_exe = config["executables"]["weave"]
-num_top_list = config["num_toplist"]
+num_top_list = config["num_top_list"]
 metric_file = "osdf:///igwn/cit/staging/hoitim.cheung/metricSetup/Start1368970000_TCoh432000_N107_Spin2.fts"
 use_osg = True
 use_osdf = True

@@ -49,7 +49,7 @@ for freq in tqdm(range(fmin, fmax), total=(fmax - fmin)):
         n_sky=n_sky,
         cluster=cluster,
         work_in_local_dir=False,
-        separate_saturated=True,
+        separate_saturated=False,
         is_injection=True,
         max_workers=THREADS,
     )

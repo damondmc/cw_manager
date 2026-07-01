@@ -531,7 +531,7 @@ class WorkflowManager:
         write_search_dagfile(
             str(dag_file_path), taskname, str(sub_file_path), 1, arg_list
         )
-<<<<<<< HEAD
+
         return dag_file_path
 
     # =========================================================================
@@ -740,6 +740,3 @@ class WorkflowManager:
             str(dag_file_path), job_taskname, str(sub_file_path), 1, arg_list
         )
         return dag_file_path
-=======
-        return dag_file_path
->>>>>>> 6283f80 (combine the sky grid  feature)

@@ -419,7 +419,7 @@ class WorkflowManager:
         arg_list = (
             f'OUTPUT_FILES="{Path(outlier_file_path).name}" '
             f'REMAP_OUTPUT_FILES="{Path(outlier_file_path).name}={outlier_file_path}" '
-            f'TRANSFERFILES="{input_files_str}" '
+            f'TRANSFER_FILES="{input_files_str}" '
         )
         return arg_list
 

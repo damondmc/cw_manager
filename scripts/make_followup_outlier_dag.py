@@ -18,6 +18,17 @@ with open(TARGET_FILE, "r") as f:
 paths = PathManager(config, target)
 manager = WorkflowManager(config, target)  # PathManager is initialized inside here too
 
+# OSG worker nodes can't pull files back through a direct connection to the
+# access point, so config/target files must also be staged on OSDF (like exe
+# /image below) and transferred via the osdf:// URL, not the home_dir path
+# used above for loading.
+config_file_osdf = paths.to_osdf_url(
+    "/osdf/igwn/cit/staging/hoitim.cheung/config/config.yaml"
+)
+target_file_osdf = paths.to_osdf_url(
+    "/osdf/igwn/cit/staging/hoitim.cheung/config/gal.yaml"
+)
+
 # freq 298 - 310 not yet ready, so start from 310
 sat_band_list = [299, 302, 303, 306, 307]
 fmin, fmax = 20, 400
@@ -94,8 +105,8 @@ with open(dag_list_path, "w") as f_daglist:
         n_jobs = prev_data["mean2F threshold"].size
 
         dag_file = manager.make_outlier_dag(
-            CONFIG_FILE,
-            TARGET_FILE,
+            config_file_osdf,
+            target_file_osdf,
             taskname,
             freq,
             stage,

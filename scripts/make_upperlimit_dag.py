@@ -22,6 +22,16 @@ manager = WorkflowManager(
 )  # PathManager is initialized inside here too
 paths = PathManager(config=config, target=target)
 
+# OSG worker nodes can't read home_dir directly, so config/target files must
+# also be staged on OSDF (like exe/metric_file/image below) and transferred
+# via the osdf:// URL rather than the home_dir path used above for loading.
+config_file_osdf = paths.to_osdf_url(
+    "/osdf/igwn/cit/staging/hoitim.cheung/config/config.yaml"
+)
+target_file_osdf = paths.to_osdf_url(
+    "/osdf/igwn/cit/staging/hoitim.cheung/config/gal.yaml"
+)
+
 obs_day = 630
 coh_day = 5
 stage = "upperlimit-1pc"
@@ -94,8 +104,8 @@ with open(dag_list_path, "w") as f_daglist:
         )
 
         dagfile = manager.make_upperlimit_dag(
-            config_file,
-            target_file,
+            config_file_osdf,
+            target_file_osdf,
             taskname,
             freq,
             stage,

@@ -73,9 +73,17 @@ with open(dag_list_path, "w") as f_daglist:
         injection_data = None
 
         try:
+            # The previous stage's outlier file lands under home_dir if it was
+            # produced by a local run, or under OSDF if produced by the
+            # outlier-collection Condor job (its OSG output can't transfer
+            # straight back to the access point).
             data_file = paths.outlier_file(
                 freq, data_taskname, prev_stage, cluster=cluster
             )
+            if not data_file.exists():
+                data_file = paths.outlier_file(
+                    freq, data_taskname, prev_stage, cluster=cluster, osdf=True
+                )
             data = fits.getdata(data_file, ext=1)
             if is_injection:
                 injection_data = fits.getdata(data_file, extname="injection")

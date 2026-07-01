@@ -146,10 +146,18 @@ class PathManager:
         )
         return base / f"{taskname}.fts.{job_index}"
 
-    def outlier_file(self, freq, taskname, stage, cluster=False):
-        """Path for the analyzed outlier file."""
+    def outlier_file(self, freq, taskname, stage, cluster=False, osdf=False):
+        """
+        Path for the analyzed outlier file. Normally lives under home_dir
+        (written directly by a local run or transferred back from a Condor
+        job). When osdf=True, resolves the OSDF-staged location instead
+        (mirrors weave_output_file's layout) — used when an outlier-collection
+        Condor job remaps its output through OSDF instead of straight back
+        to the access point.
+        """
+        root = self.osdf_dir / "o4ab" if osdf else self.home_dir
         base = (
-            self.home_dir
+            root
             / "results"
             / stage
             / self.target_name

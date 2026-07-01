@@ -605,21 +605,27 @@ class WorkflowManager:
         ] + weave_files
         input_files_str = ", ".join(input_files_list)
 
+        # OSG execute nodes can't transfer output straight back to the access
+        # point's home_dir, so the outlier file is remapped through OSDF
+        # instead, same as the raw Weave results. Downstream readers (e.g.
+        # make_followup_dag.py) need to check both locations.
         outlier_file_path = self.paths.outlier_file(
-            freq, taskname, stage, cluster=False
+            freq, taskname, stage, cluster=False, osdf=True
         )
         make_dir([outlier_file_path])
 
         output_names = [Path(outlier_file_path).name]
-        remap_strings = [f"{Path(outlier_file_path).name}={outlier_file_path}"]
+        remap_strings = [
+            f"{Path(outlier_file_path).name}={self.paths.to_osdf_url(outlier_file_path)}"
+        ]
 
         if cluster:
             clustered_file_path = self.paths.outlier_file(
-                freq, taskname, stage, cluster=True
+                freq, taskname, stage, cluster=True, osdf=True
             )
             output_names.append(Path(clustered_file_path).name)
             remap_strings.append(
-                f"{Path(clustered_file_path).name}={clustered_file_path}"
+                f"{Path(clustered_file_path).name}={self.paths.to_osdf_url(clustered_file_path)}"
             )
 
         arg_list = (

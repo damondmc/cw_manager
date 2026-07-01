@@ -65,9 +65,17 @@ with open(dag_list_path, "w") as f_daglist:
         prev_taskname = f"{target['name']}_{prev_stage}_TCoh{prev_tcoh}_O{prev_freq_deriv_order}_{freq}Hz"
         taskname = f"{target['name']}_{stage}_TCoh{tcoh}_O{freq_deriv_order}_{freq}Hz"
 
+        # The previous stage's outlier file lands under home_dir if it was
+        # produced by a local run, or under OSDF if produced by the
+        # outlier-collection Condor job (its OSG output can't transfer
+        # straight back to the access point).
         prev_outlier_file = paths.outlier_file(
             freq, prev_taskname, prev_stage, cluster=cluster
         )
+        if not prev_outlier_file.exists():
+            prev_outlier_file = paths.outlier_file(
+                freq, prev_taskname, prev_stage, cluster=cluster, osdf=True
+            )
 
         try:
             n_jobs = fits.getdata(prev_outlier_file)["mean2F threshold"].size

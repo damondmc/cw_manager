@@ -7,6 +7,14 @@ dist/
 __pycache__/
 *.py[cod]
 *$py.class
+.claude/
+docs/
+.DS_Store
+*sft
+*fts
+*.c
+test_upperlimit_185Hz/
+tests/
 
 # Jupyter Notebook checkpoint
 .ipynb_checkpoints/

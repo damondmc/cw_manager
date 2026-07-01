@@ -41,6 +41,13 @@ class PathManager:
     # Input Data (SFTs)
     # ---------------------------------------------------------
 
+    def to_osdf_url(self, path):
+        """
+        Converts a local OSDF mount path (e.g. /osdf/igwn/...) to a pelican
+        osdf:// URL by stripping the leading '/osdf' mount prefix (5 chars).
+        """
+        return "osdf://" + str(path)[5:]
+
     def sft_file_path(self, freq, detector="H1"):
         """
         Returns the DIRECTORY path containing SFTs for a specific frequency.
@@ -56,8 +63,8 @@ class PathManager:
         """
         h1_path = self.sft_file_path(freq, detector="H1")
         l1_path = self.sft_file_path(freq, detector="L1")
-        sft_list = ["osdf://" + str(s)[5:] for s in h1_path.glob("*.sft")] + [
-            "osdf://" + str(s)[5:] for s in l1_path.glob("*.sft")
+        sft_list = [self.to_osdf_url(s) for s in h1_path.glob("*.sft")] + [
+            self.to_osdf_url(s) for s in l1_path.glob("*.sft")
         ]
         return sft_list
 

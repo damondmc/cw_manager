@@ -158,7 +158,9 @@ class WorkflowManager:
 
             if use_osg:
                 output_files.append(local_out_name)
-                remap_strings.append(f"{local_out_name}={result_file}")
+                remap_strings.append(
+                    f"{local_out_name}={self.paths.to_osdf_url(result_file)}"
+                )
 
         # Write task file for the worker node
         with open(task_file, "w") as f:

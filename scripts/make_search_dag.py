@@ -3,11 +3,12 @@ Create search DAG files for Galactic Center search over specified frequency band
 """
 
 import yaml
+
+from paws.definitions import task_name
+from paws.filepaths import PathManager
 from paws.params.models import PowerLawModel
 from paws.params.search import SearchParamGenerator
 from paws.workflow.manager import WorkflowManager
-from paws.filepaths import PathManager
-from paws.definitions import task_name
 
 # 1. Load Configs
 with open("/home/hoitim.cheung/galacticCenter/config/config.yaml", "r") as f:
@@ -69,7 +70,7 @@ for fmin, fmax in zip(fminList, fmaxList):
 
             # --- Collect SFT files ---
             sftFiles = []
-            files = paths.sft_ensemble(freq, use_osdf=use_osdf)
+            files = paths.sft_ensemble(freq)
             sftFiles.extend(files)  # Use extend, not append, to flatten the list
 
             # --- Make DAG ---

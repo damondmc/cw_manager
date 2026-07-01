@@ -78,11 +78,20 @@ with open(dag_list_path, "w") as f_daglist:
             )
 
         try:
-            n_jobs = fits.getdata(prev_outlier_file)["mean2F threshold"].size
+            prev_data = fits.getdata(prev_outlier_file)
         except FileNotFoundError as e:
             print(f"Error loading previous stage outlier file for {freq} Hz: {e}")
             skipped_freqs.append(freq)
             continue
+
+        if prev_data.size == 0:
+            print(
+                f"No outliers in previous stage outlier file for {freq} Hz. Skipping."
+            )
+            skipped_freqs.append(freq)
+            continue
+
+        n_jobs = prev_data["mean2F threshold"].size
 
         dag_file = manager.make_outlier_dag(
             CONFIG_FILE,

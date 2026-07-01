@@ -3,11 +3,11 @@ import yaml
 from astropy.io import fits
 from tqdm import tqdm
 
-from paws.filepaths import PathManager
-from paws.workflow.manager import WorkflowManager
 from paws.definitions import phase_param_name
-from paws.params.models import PowerLawModel
+from paws.filepaths import PathManager
 from paws.params.injections import InjectionParamGenerator
+from paws.params.models import PowerLawModel
+from paws.workflow.manager import WorkflowManager
 
 # 1. Load Configs
 with open("/home/hoitim.cheung/galacticCenter/config/config.yaml", "r") as f:
@@ -66,6 +66,22 @@ with open(dag_list_path, "w") as f_daglist:
 
         data_file = paths.outlier_file(freq, data_taskname, prev_stage, cluster=True)
 
+        try:
+            non_sat_bands = fits.getdata(data_file, extname="non_sat_band")[
+                "non_sat_band"
+            ]
+        except FileNotFoundError as e:
+            print(f"Error loading previous stage outlier file for {freq} Hz: {e}")
+            skipped_freqs.append(freq)
+            continue
+
+        if len(non_sat_bands) == 0:
+            print(
+                f"Warning: No non-saturated bands found for {freq} Hz. Skipping DAG generation."
+            )
+            skipped_freqs.append(freq)
+            continue
+
         df_grid = [
             fits.getval(data_file, param_name, 0)
             for param_name in freq_deriv_param_names
@@ -80,15 +96,6 @@ with open(dag_list_path, "w") as f_daglist:
         df_grid = {name: df_grid[i] for i, name in enumerate(freq_deriv_names)}
 
         mean2f_th = fits.getval(data_file, "mean2F_th", 0)
-
-        non_sat_bands = fits.getdata(data_file, extname="non_sat_band")["non_sat_band"]
-
-        if len(non_sat_bands) == 0:
-            print(
-                f"Warning: No non-saturated bands found for {freq} Hz. Skipping DAG generation."
-            )
-            skipped_freqs.append(freq)
-            continue
 
         if freq < 200:
             tau = 86400 * 365.25 * 300

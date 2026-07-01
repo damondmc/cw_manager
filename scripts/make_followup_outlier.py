@@ -1,8 +1,9 @@
+from pathlib import Path
+
 import numpy as np
 import yaml
 from astropy.io import fits
 from tqdm import tqdm
-from pathlib import Path
 
 from paws.analysis.outlier import ResultAnalysisManager
 from paws.filepaths import PathManager
@@ -66,15 +67,17 @@ for freq in tqdm(range(fmin, fmax), total=(fmax - fmin)):
     prev_taskname = f"{target['name']}_{prev_stage}_TCoh{prev_tcoh}_O{prev_freq_deriv_order}_{freq}Hz"
 
     taskname = f"{target['name']}_{stage}_TCoh{tcoh}_O{freq_deriv_order}_{freq}Hz"
-    
+
     data_file = paths.outlier_file(freq, prev_taskname, prev_stage, cluster=cluster)
+
+    if not data_file.is_file() or fits.getdata(data_file).size == 0:
+        print(f"No outlier for {freq}Hz, skip.")
+        continue
+
     if is_injection:
         mean2f_th = fits.getdata(data_file)["mean2F threshold"]
         mean2f_th = np.zeros_like(mean2f_th)
     else:
-        if not data_file.is_file() or fits.getdata(data_file).size == 0:
-            print(f"No outlier for {freq}Hz, skip.")
-            continue
         idx = int((freq - fs[0]) // band_step)
         mean2f_th = (fits.getdata(data_file)["mean2F"] - 4) * ratio_th[idx] + 4
         print(f"Freq={freq}Hz: th={ratio_th[idx]}")

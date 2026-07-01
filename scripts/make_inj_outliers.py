@@ -36,7 +36,11 @@ for freq in tqdm(range(fmin, fmax), total=(fmax - fmin)):
 
     data_file = paths.outlier_file(freq, prev_taskname, prev_stage, cluster=cluster)
 
-    mean2f_th = fits.getval(data_file, "mean2F_th", 0)
+    try:
+        mean2f_th = fits.getval(data_file, "mean2F_th", 0)
+    except FileNotFoundError as e:
+        print(f"Error loading previous stage outlier file for {freq} Hz: {e}")
+        continue
 
     result_file = result_manager.make_outlier(
         taskname,

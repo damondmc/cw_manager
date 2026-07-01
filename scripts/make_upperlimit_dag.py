@@ -65,14 +65,14 @@ with open(dag_list_path, "w") as f_daglist:
 
         data_file = paths.outlier_file(freq, data_taskname, prev_stage, cluster=True)
 
-        df_grid = [
-            fits.getval(data_file, param_name, 0)
-            for param_name in freq_deriv_param_names
-        ]
-
-        mean2f_th = fits.getval(data_file, "mean2F_th", 0)
-
-        non_sat_bands = fits.getdata(data_file, extname="non_sat_band")["non_sat_band"]
+        try:
+            non_sat_bands = fits.getdata(data_file, extname="non_sat_band")[
+                "non_sat_band"
+            ]
+        except FileNotFoundError as e:
+            print(f"Error loading previous stage outlier file for {freq} Hz: {e}")
+            skipped_freqs.append(freq)
+            continue
 
         if len(non_sat_bands) == 0:
             print(
@@ -80,6 +80,13 @@ with open(dag_list_path, "w") as f_daglist:
             )
             skipped_freqs.append(freq)
             continue
+
+        df_grid = [
+            fits.getval(data_file, param_name, 0)
+            for param_name in freq_deriv_param_names
+        ]
+
+        mean2f_th = fits.getval(data_file, "mean2F_th", 0)
         # --- Make DAG ---
         # Generate task name
         taskname = (

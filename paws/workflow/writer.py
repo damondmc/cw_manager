@@ -39,7 +39,7 @@ def write_search_subfile(
         subfile.write("accounting_group_user = {0}\n\n".format(user))
 
         if image is not None:
-            subfile.write('container_image = "{}"\n\n'.format(image))
+            subfile.write("container_image = {0}\n\n".format(image))
 
         subfile.write("output = {0}\n".format(output_path))
         subfile.write("error = {0}\n".format(error_path))

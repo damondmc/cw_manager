@@ -1,13 +1,15 @@
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+import numpy as np
 from astropy.io import fits
 from astropy.table import Table, vstack
-import numpy as np
 from tqdm import tqdm
-from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
 
-from paws.filepaths import PathManager
 from paws.definitions import phase_param_name
-from paws.io import make_dir, get_spacing
+from paws.filepaths import PathManager
+from paws.io import get_spacing, make_dir
+
 from .clustering import clustering
 
 
@@ -295,9 +297,15 @@ class ResultAnalysisManager:
         separate_saturated=False,
         is_injection=False,
         max_workers=32,
+        param_indices=None,
     ):
         """
         Unified engine to collect results and write FITS files for Search, Injection, or Follow-up.
+
+        param_indices: optional 0-based indices of the parameter points to
+        analyse (None = all n_jobs points). Each point owns n_sky consecutive
+        Weave jobs, so only the result files of the selected points are read,
+        and an array-valued mean2f_th is subset to match.
         """
         # 1. Saturation Warning
         if "search" in stage.lower() and not separate_saturated:
@@ -314,7 +322,18 @@ class ResultAnalysisManager:
             )
 
         # Each parameter point maps to n_sky consecutive Weave jobs
-        job_indices = list(range(1, n_jobs * n_sky + 1))
+        if param_indices is None:
+            job_indices = list(range(1, n_jobs * n_sky + 1))
+        else:
+            param_indices = np.asarray(param_indices, dtype=int)
+            job_indices = (
+                (param_indices[:, None] * n_sky + np.arange(1, n_sky + 1))
+                .ravel()
+                .tolist()
+            )
+            if not np.isscalar(mean2f_th):
+                mean2f_th = np.asarray(mean2f_th)[param_indices]
+            n_jobs = param_indices.size
 
         # 2. Collect data using your central engine
         outliers, sat_outliers, inj_data_list, info_list, max_spacing = (
